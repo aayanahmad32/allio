@@ -1192,7 +1192,7 @@ function shareApp() {
             </div>
             
             <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; margin-top: 20px;">
-                <p style="font-family: monospace; word-break: break-all;">https://alliopro.com/?ref=share</p>
+                <p style="font-family: monospace; word-break: break-all;">https://allio-delta.vercel.app/?ref=share</p>
             </div>
         </div>
     `;
@@ -1201,7 +1201,7 @@ function shareApp() {
 
 // Share via WhatsApp
 function shareViaWhatsApp() {
-    const text = "Check out ALLIO PRO - The ultimate media downloader for all platforms! https://alliopro.com/?ref=share";
+    const text = "Check out ALLIO PRO - The ultimate media downloader for all platforms! https://allio-delta.vercel.app/?ref=share";
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     showNotification('Sharing', 'Opening WhatsApp...');
@@ -1209,15 +1209,15 @@ function shareViaWhatsApp() {
 
 // Share via Telegram
 function shareViaTelegram() {
-    const text = "Check out ALLIO PRO - The ultimate media downloader for all platforms! https://alliopro.com/?ref=share";
-    const url = `https://t.me/share/url?url=${encodeURIComponent('https://alliopro.com/?ref=share')}&text=${encodeURIComponent(text)}`;
+    const text = "Check out ALLIO PRO - The ultimate media downloader for all platforms! https://allio-delta.vercel.app/?ref=share";
+    const url = `https://t.me/share/url?url=${encodeURIComponent('https://allio-delta.vercel.app/?ref=share')}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     showNotification('Sharing', 'Opening Telegram...');
 }
 
 // Copy share link
 function copyShareLink() {
-    const link = "https://alliopro.com/?ref=share";
+    const link = "https://allio-delta.vercel.app/?ref=share";
     navigator.clipboard.writeText(link).then(() => {
         showNotification('Link Copied', 'Share link copied to clipboard!');
     });
