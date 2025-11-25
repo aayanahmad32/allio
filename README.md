@@ -52,7 +52,7 @@ This project is licensed under the Proprietary License - see the [LICENSE](LICEN
 
 - **Email**: support@looplabstech.com
 - **Instagram**: [@looplabstech](https://instagram.com/looplabstech)
-- **Website**: [https://alliopro.com](https://alliopro.com)
+- **Website**: [https://allio-delta.vercel.app](https://allio-delta.vercel.app)
 
 ## Disclaimer
 
@@ -60,7 +60,7 @@ This tool is created for educational purposes only. Users are responsible for co
 
 ## Contributing
 
-We welcome contributions! Please see our [contribution guidelines](instagram) for details.
+We welcome contributions! Please see our [contribution guidelines](www.instagram.com/looplabstech) for details.
 
 ## Acknowledgments
 
