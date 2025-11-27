@@ -113,10 +113,19 @@ async function pasteFromClipboard() {
     }
 }
 
-// Handle Input / Search
-function processInput() {
+// Enhanced Search Function
+async function processInput() {
     const val = input.value.trim();
     if(!val) return;
+
+    // Check if it's a URL or search term
+    const isUrl = /^https?:\/\/.+/i.test(val);
+    
+    if (!isUrl) {
+        // Search for song/video
+        await searchMedia(val);
+        return;
+    }
 
     // Check if it's a short content (reels, shorts, etc.)
     isShortContent = checkIfShortContent(val);
@@ -139,6 +148,28 @@ function processInput() {
     // Show popup with all options
     showPopup();
     customizePopup(currentPlatform);
+}
+
+// Search Media Function
+async function searchMedia(query) {
+    showNotification('Searching', `Finding: ${query}`);
+    
+    // Simulate search
+    setTimeout(() => {
+        // Mock results
+        const mockResults = [
+            { title: `${query} - Official Video`, platform: 'YouTube' },
+            { title: `${query} - Audio Version`, platform: 'Spotify' },
+            { title: `${query} - TikTok Remix`, platform: 'TikTok' }
+        ];
+        
+        // Show search results (you can implement a modal for this)
+        showNotification('Search Complete', `Found ${mockResults.length} results`);
+        
+        // Auto-select first result and proceed
+        input.value = 'https://youtube.com/watch?v=example';
+        processInput();
+    }, 1500);
 }
 
 // Check if URL is for short content

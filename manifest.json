@@ -1,24 +1,22 @@
 {
-  "name": "ALLIO PRO | Sora 2 AI Video Downloader",
+  "name": "ALLIO PRO",
   "short_name": "ALLIO PRO",
-  "description": "Download videos and music from Sora 2 AI, YouTube, Instagram, TikTok, and more.",
+  "description": "Sora 2 AI & Global Media Downloader - Download videos and music from all social media platforms.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050507",
-  "theme_color": "#0f0c29",
+  "theme_color": "#050507",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s192/IMG_20251124_121644.jpg",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/jpeg"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s512/IMG_20251124_121644.jpg",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/jpeg"
     }
   ]
 }

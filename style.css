@@ -25,7 +25,11 @@
     --neon-glow: 0 0 15px #4facfe, 0 0 30px #4facfe;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
 
 body {
     font-family: var(--font-main);
@@ -1789,6 +1793,17 @@ footer {
     margin-right: 5px;
 }
 
+/* Ad Banner in Footer */
+.ad-banner-footer {
+    max-width: 728px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.ad-banner-footer .ad-container {
+    margin: 0;
+}
+
 /* ANIMATIONS */
 @keyframes slideUp { 
     from { 
@@ -1890,5 +1905,24 @@ footer {
     
     .share-options {
         flex-direction: column;
+    }
+    
+    .ad-banner-footer {
+        padding: 0 10px;
+    }
+    
+    .stats-bar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .tabs {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .tab {
+        padding: 8px 16px;
+        font-size: 0.9rem;
     }
 }
