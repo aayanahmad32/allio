@@ -1,11 +1,11 @@
 {
   "name": "ALLIO PRO",
   "short_name": "ALLIO PRO",
-  "description": "Sora 2 AI & Global Media Downloader - Download videos and music from all social media platforms.",
+  "description": "Sora 2 AI Video Downloader & Global Media Converter",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050507",
-  "theme_color": "#050507",
+  "theme_color": "#0f0c29",
   "orientation": "portrait",
   "icons": [
     {

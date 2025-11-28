@@ -17,28 +17,54 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event (Cleanup old caches)
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(keyList.map((key) => {
-        if (key !== CACHE_NAME) {
-          return caches.delete(key);
-        }
-      }));
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
+        })
+      );
     })
   );
 });
 
-// Fetch Event (Serve from cache, fall back to network)
+// Fetch Event
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
     .then((response) => {
-      return response || fetch(event.request);
-    })
-    .catch(() => {
-      // Optional: Return a custom offline page if network fails
+      // Cache Hit - return response
+      if (response) {
+        return response;
+      }
+      // Clone the request
+      const fetchRequest = event.request.clone();
+      
+      return fetch(fetchRequest).then(
+        (response) => {
+          // Check if we received a valid response
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          
+          // Clone the response
+          const responseToCache = response.clone();
+          
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              // Don't cache external API calls if you don't want to
+              if (event.request.url.startsWith('http')) {
+                cache.put(event.request, responseToCache);
+              }
+            });
+          
+          return response;
+        }
+      );
     })
   );
 });

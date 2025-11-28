@@ -1,5 +1,1 @@
-# Force HTTPS
-/* https://:splat 301!
-
-# Fallback for SPA (Single Page Apps)
-/* /index.html 200
+/*    /index.html   200

@@ -325,198 +325,74 @@
                 </div>
             </div>
         </div>
-
-        <!-- DASHBOARD -->
-        <div id="dashboard">
-            <div class="glass-panel media-layout">
-                
-                <!-- LEFT: ARTWORK -->
-                <div class="art-card">
-                    <img src="" id="albumArt" class="art-img">
-                    <div class="lyrics-badge" id="lyricsTag" style="display:none;">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-                        Lyrics Found
-                    </div>
-                    <div class="ai-badge" id="aiTag" style="display:none;">
-                        <i class="fas fa-brain"></i>
-                        AI Generated
-                    </div>
-                </div>
-
-                <!-- RIGHT: CONTROLS -->
-                <div class="controls-panel">
-                    <h2 class="media-title" id="mediaTitle">Loading...</h2>
-                    <p class="media-artist" id="mediaArtist">Loading...</p>
-
-                    <!-- Format Tabs -->
-                    <div class="tabs">
-                        <button class="tab active" onclick="setMode('video')">Video</button>
-                        <button class="tab" onclick="setMode('audio')">Audio (MP3)</button>
-                        <button class="tab" onclick="setMode('playlist')">Playlist</button>
-                        <button class="tab sora-tab" onclick="setMode('sora')">Sora 2 AI</button>
-                        <button class="tab" onclick="setMode('browser')">Browser</button>
-                    </div>
-
-                    <!-- VIDEO OPTIONS -->
-                    <div id="video-opts" class="dl-grid">
-                        <div class="dl-card" onclick="startDl('8K Video')"><b>8K Ultra</b><span>WebM • 2.1GB</span></div>
-                        <div class="dl-card" onclick="startDl('4K Video')"><b>4K 2160p</b><span>MP4 • 850MB</span></div>
-                        <div class="dl-card" onclick="startDl('2K Video')"><b>2K 1440p</b><span>MP4 • 400MB</span></div>
-                        <div class="dl-card" onclick="startDl('1080p Video')"><b>1080p HD</b><span>MP4 • 140MB</span></div>
-                        <div class="dl-card" onclick="startDl('720p Video')"><b>720p</b><span>MP4 • 55MB</span></div>
-                    </div>
-
-                    <!-- AUDIO OPTIONS (The Feature) -->
-                    <div id="audio-opts" style="display:none;">
-                        
-                        <!-- LYRICS TOGGLE SWITCH -->
-                        <div class="lyrics-toggle-card active" id="lyricsToggle" onclick="toggleLyrics()">
-                            <div class="toggle-info">
-                                <h4>Include Lyrics & Cover Art</h4>
-                                <p id="lyricsStatus">Lyrics will be embedded into MP3.</p>
-                            </div>
-                            <div class="switch"></div>
-                        </div>
-
-                        <div class="dl-grid">
-                            <div class="dl-card" onclick="startDl('MP3 320k')"><b>MP3 320kbps</b><span>Best Quality</span></div>
-                            <div class="dl-card" onclick="startDl('M4A AAC')"><b>M4A AAC</b><span>Efficient</span></div>
-                            <div class="dl-card" onclick="startDl('FLAC')"><b>FLAC</b><span>Lossless</span></div>
-                        </div>
-                        
-                        <!-- Equalizer -->
-                        <div class="equalizer" id="equalizer">
-                            <div class="eq-title">
-                                <i class="fas fa-sliders-h"></i>
-                                Audio Enhancer
-                            </div>
-                            <div class="eq-sliders">
-                                <div class="eq-slider">
-                                    <div class="eq-bar">
-                                        <div class="eq-fill" style="height: 40%"></div>
-                                    </div>
-                                    <div class="eq-label">60Hz</div>
-                                </div>
-                                <div class="eq-slider">
-                                    <div class="eq-bar">
-                                        <div class="eq-fill" style="height: 60%"></div>
-                                    </div>
-                                    <div class="eq-label">230Hz</div>
-                                </div>
-                                <div class="eq-slider">
-                                    <div class="eq-bar">
-                                        <div class="eq-fill" style="height: 70%"></div>
-                                    </div>
-                                    <div class="eq-label">910Hz</div>
-                                </div>
-                                <div class="eq-slider">
-                                    <div class="eq-bar">
-                                        <div class="eq-fill" style="height: 50%"></div>
-                                    </div>
-                                    <div class="eq-label">4kHz</div>
-                                </div>
-                                <div class="eq-slider">
-                                    <div class="eq-bar">
-                                        <div class="eq-fill" style="height: 40%"></div>
-                                    </div>
-                                    <div class="eq-label">14kHz</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PLAYLIST OPTIONS -->
-                    <div id="playlist-opts" style="display:none;">
-                        <div class="dl-grid">
-                            <div class="dl-card" onclick="startDl('Playlist MP3')"><b>MP3 320kbps</b><span>Full Playlist</span></div>
-                            <div class="dl-card" onclick="startDl('Playlist M4A')"><b>M4A AAC</b><span>Smaller Size</span></div>
-                            <div class="dl-card" onclick="startDl('Playlist Video')"><b>1080p Video</b><span>Full Playlist</span></div>
-                        </div>
-                    </div>
-                    
-                    <!-- SORA 2 AI OPTIONS -->
-                    <div id="sora-opts" class="sora-opts" style="display:none;">
-                        <div class="holographic-border" style="padding: 20px; margin-bottom: 20px;">
-                            <div class="dl-grid">
-                                <div class="dl-card" onclick="startDl('Sora 4K Upscaled')"><b>4K Upscaled</b><span>AI Enhanced</span></div>
-                                <div class="dl-card" onclick="startDl('Sora Original')"><b>Original Quality</b><span>As Generated</span></div>
-                                <div class="dl-card" onclick="startDl('Sora 1080p')"><b>1080p</b><span>WebM • 120MB</span></div>
-                                <div class="dl-card" onclick="startDl('Sora 720p')"><b>720p</b><span>WebM • 60MB</span></div>
-                            </div>
-                            
-                            <div class="sora-prompt-card" onclick="extractPrompt()">
-                                <div class="prompt-info">
-                                    <h4>Extract AI Prompt</h4>
-                                    <p>Get the text prompt used to generate this AI video</p>
-                                </div>
-                                <button class="extract-btn">Extract</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- BROWSER OPTIONS -->
-                    <div id="browser-opts" class="browser-container" style="display:none;">
-                        <div class="browser-toolbar">
-                            <button class="browser-nav-btn" onclick="browserBack()">
-                                <i class="fas fa-arrow-left"></i>
-                            </button>
-                            <button class="browser-nav-btn" onclick="browserForward()">
-                                <i class="fas fa-arrow-right"></i>
-                            </button>
-                            <button class="browser-nav-btn" onclick="browserRefresh()">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
-                            <input type="text" class="browser-address-bar" id="browserUrl" placeholder="Enter URL or search term...">
-                            <button class="browser-go-btn" onclick="browserGo()">GO</button>
-                        </div>
-                        
-                        <div class="browser-view">
-                            <div class="browser-placeholder" id="browserPlaceholder">
-                                <i class="fas fa-globe"></i>
-                                <h3>Web Browser</h3>
-                                <p>Enter a URL above to browse and download media from any website</p>
-                                <button class="browser-download-btn" onclick="browserDownload()">
-                                    <i class="fas fa-download"></i> Download Media from Current Page
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- GLOBAL DOWNLOAD BUTTON -->
-                    <button class="main-dl-btn" id="dlBtn" onclick="startDl('Default')">START DOWNLOAD</button>
-
-                    <!-- PROGRESS BAR -->
-                    <div class="progress-area" id="progress">
-                        <div class="bar-bg"><div class="bar-fill" id="barFill"></div></div>
-                        <div class="status-txt">
-                            <span id="pText">Initializing...</span>
-                            <span id="pPercent">0%</span>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- ADS BANNER -->
-        <div class="ad-banner">
-            <div class="ad-container ad-square">
-                <div class="ad-label">Advertisement</div>
-                <div class="ad-content">
-                    <script type="text/javascript">
-                        atOptions = {
-                            'key' : '0672cfd991579655b0af18421503edb9',
-                            'format' : 'iframe',
-                            'height' : 250,
-                            'width' : 300,
-                            'params' : {}
-                        };
-                    </script>
-                    <script type="text/javascript" src="//www.highperformanceformat.com/0672cfd991579655b0af18421503edb9/invoke.js"></script>
-                </div>
-            </div>
-        </div>
     </main>
+
+    <!-- BOTTOM SHEET MODAL -->
+    <div class="bottom-sheet" id="bottomSheet">
+        <div class="bottom-sheet-header">
+            <h3>Download video as</h3>
+            <button class="close-btn" onclick="closeBottomSheet()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="bottom-sheet-content">
+            <!-- Music Section -->
+            <div class="format-section">
+                <h4>Music</h4>
+                <div class="format-options">
+                    <label class="format-option">
+                        <div class="format-info">
+                            <span class="format-name">Fast</span>
+                            <span class="format-size">3.9MB</span>
+                        </div>
+                        <input type="radio" name="format" value="fast-mp3">
+                    </label>
+                    <label class="format-option">
+                        <div class="format-info">
+                            <span class="format-name">Classic MP3</span>
+                            <span class="format-size">4.1MB</span>
+                        </div>
+                        <input type="radio" name="format" value="classic-mp3" checked>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Video Section -->
+            <div class="format-section">
+                <h4>Video</h4>
+                <div class="format-options">
+                    <label class="format-option">
+                        <div class="format-info">
+                            <span class="format-name">Fast (360p)</span>
+                            <span class="format-size">17.8MB</span>
+                        </div>
+                        <input type="radio" name="format" value="fast-360p">
+                    </label>
+                    <label class="format-option">
+                        <div class="format-info">
+                            <span class="format-name">High quality (720p)</span>
+                            <span class="format-size">66.6MB</span>
+                        </div>
+                        <input type="radio" name="format" value="high-720p">
+                    </label>
+                    <label class="format-option">
+                        <div class="format-info">
+                            <span class="format-name">1080p HD</span>
+                            <span class="format-size">140MB</span>
+                        </div>
+                        <input type="radio" name="format" value="1080p-hd">
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-sheet-footer">
+            <button class="download-btn" id="downloadBtn" onclick="startDownload()">
+                Download
+            </button>
+        </div>
+    </div>
 
     <!-- FOOTER -->
     <footer>
@@ -641,143 +517,6 @@
             <div class="notification-title" id="notificationTitle">Notification</div>
         </div>
         <div class="notification-message" id="notificationMessage">This is a notification message.</div>
-    </div>
-    
-    <!-- CUSTOM POPUP -->
-    <div class="popup-overlay" id="popupOverlay">
-        <div class="popup">
-            <div class="popup-header">
-                <div class="popup-title">Download Options</div>
-                <button class="popup-close" onclick="closePopup()">×</button>
-            </div>
-            
-            <div class="popup-content">
-                <!-- Platform-specific header -->
-                <div class="platform-header" id="platformHeader">
-                    <div class="platform-icon" id="platformIcon">
-                        <i class="fas fa-link"></i>
-                    </div>
-                    <div class="platform-info">
-                        <div class="platform-name" id="platformName">Unknown Platform</div>
-                        <div class="platform-desc" id="platformDesc">Select your preferred download options</div>
-                    </div>
-                </div>
-                
-                <!-- Format Selection -->
-                <div class="format-section">
-                    <div class="section-title">
-                        <i class="fas fa-file-download"></i>
-                        Select Format
-                    </div>
-                    <div class="format-grid" id="formatGrid">
-                        <div class="format-option" data-format="video" onclick="selectFormat(this, 'video')">
-                            <div class="format-name">
-                                <i class="fas fa-video"></i>
-                                Video
-                            </div>
-                            <div class="format-desc">Download as video file</div>
-                        </div>
-                        <div class="format-option" data-format="audio" onclick="selectFormat(this, 'audio')">
-                            <div class="format-name">
-                                <i class="fas fa-music"></i>
-                                Audio
-                            </div>
-                            <div class="format-desc">Extract audio only</div>
-                        </div>
-                        <div class="format-option" data-format="playlist" onclick="selectFormat(this, 'playlist')">
-                            <div class="format-name">
-                                <i class="fas fa-list"></i>
-                                Playlist
-                            </div>
-                            <div class="format-desc">Download entire playlist</div>
-                        </div>
-                        <div class="format-option" data-format="sora" onclick="selectFormat(this, 'sora')">
-                            <div class="format-name">
-                                <i class="fas fa-brain"></i>
-                                Sora 2 AI
-                            </div>
-                            <div class="format-desc">AI video with prompt extraction</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Quality Selection -->
-                <div class="quality-select">
-                    <label class="quality-label">Select Quality:</label>
-                    <div class="quality-options">
-                        <div class="quality-option" onclick="selectQuality(this, 'highest')">Highest</div>
-                        <div class="quality-option" onclick="selectQuality(this, 'high')">High</div>
-                        <div class="quality-option" onclick="selectQuality(this, 'medium')">Medium</div>
-                        <div class="quality-option" onclick="selectQuality(this, 'low')">Low</div>
-                    </div>
-                </div>
-                
-                <!-- Lyrics Option -->
-                <div class="lyrics-option" id="popupLyricsOption" style="display: none;">
-                    <div class="lyrics-info">
-                        <div class="lyrics-title">Include Lyrics & Cover Art</div>
-                        <div class="lyrics-desc">Embed lyrics and cover art into audio files</div>
-                    </div>
-                    <div class="switch" id="popupLyricsSwitch" onclick="togglePopupLyrics()"></div>
-                </div>
-                
-                <!-- Platform-specific options -->
-                <div class="platform-specific-options" id="platformSpecificOptions">
-                    <!-- Platform-specific options will be inserted here dynamically -->
-                </div>
-                
-                <!-- Default Settings -->
-                <div class="default-settings">
-                    <div class="default-header">
-                        <div class="default-title">Platform Default Settings</div>
-                    </div>
-                    <div class="default-desc">
-                        Save your current selection as default for <span id="platformNameText">this platform</span>
-                    </div>
-                    <div class="default-preview">
-                        <div class="default-format" id="defaultFormatPreview">Video</div>
-                        <div class="default-quality" id="defaultQualityPreview">High Quality</div>
-                    </div>
-                    <div class="checkbox-wrapper">
-                        <div class="custom-checkbox" id="setDefaultCheckbox" onclick="toggleDefaultSettings()"></div>
-                        <label for="setDefaultCheckbox">Set as default for <span id="platformNameCheckbox">this platform</span></label>
-                    </div>
-                </div>
-                
-                <!-- Direct Download Option -->
-                <div class="direct-download-section">
-                    <div class="section-title">
-                        <i class="fas fa-bolt"></i>
-                        Quick Download
-                    </div>
-                    <div class="direct-download-btn" onclick="startDirectDownload()">
-                        <i class="fas fa-download"></i>
-                        Direct Download (Background)
-                    </div>
-                    <p class="direct-download-desc">Start download immediately with default settings</p>
-                </div>
-            </div>
-            
-            <div class="popup-actions">
-                <button class="popup-btn popup-btn-cancel" onclick="closePopup()">Cancel</button>
-                <button class="popup-btn popup-btn-download" onclick="confirmDownload()">Download</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- AI PARSING ANIMATION -->
-    <div class="ai-parsing" id="aiParsing">
-        <div class="ai-parsing-content">
-            <div class="ai-parsing-icon">
-                <i class="fas fa-brain"></i>
-            </div>
-            <h3 class="ai-parsing-title">AI Parsing</h3>
-            <p class="ai-parsing-desc">Extracting prompt from Sora 2 AI video...</p>
-            <div class="ai-parsing-bar">
-                <div class="ai-parsing-fill" id="aiParsingFill"></div>
-            </div>
-            <div class="ai-parsing-status" id="aiParsingStatus">Analyzing video frames...</div>
-        </div>
     </div>
     
     <!-- SETTINGS MODAL -->

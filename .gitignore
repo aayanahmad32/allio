@@ -1,11 +1,25 @@
-node_modules
+# Dependencies
+node_modules/
 .pnp
 .pnp.js
-coverage
-build
-dist
+
+# Testing
+coverage/
+
+# Production
+build/
+dist/
+
+# System Files
 .DS_Store
 Thumbs.db
+
+# Environment variables
 .env
 .env.local
-.vercel
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel/

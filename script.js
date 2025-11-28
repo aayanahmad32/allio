@@ -2,7 +2,7 @@
 let currentMode = 'video';
 let lyricsEnabled = true;
 let privateMode = false;
-let selectedFormat = 'video';
+let selectedFormat = 'classic-mp3';
 let selectedQuality = 'high';
 let isShortContent = false;
 let browserHistory = [];
@@ -25,52 +25,22 @@ let platformSettings = {
 
 // --- DOM ELEMENTS ---
 const input = document.getElementById('inputUrl');
-const dashboard = document.getElementById('dashboard');
+const bottomSheet = document.getElementById('bottomSheet');
+const downloadBtn = document.getElementById('downloadBtn');
 const searchSection = document.querySelector('.hero-container');
 const menu = document.getElementById('menu');
 const browserUrl = document.getElementById('browserUrl');
 const browserPlaceholder = document.getElementById('browserPlaceholder');
 const langDropdown = document.getElementById('langDropdown');
 const currentLang = document.getElementById('currentLang');
-const aiParsing = document.getElementById('aiParsing');
-const aiParsingFill = document.getElementById('aiParsingFill');
-const aiParsingStatus = document.getElementById('aiParsingStatus');
-
-const videoOpts = document.getElementById('video-opts');
-const audioOpts = document.getElementById('audio-opts');
-const playlistOpts = document.getElementById('playlist-opts');
-const soraOpts = document.getElementById('sora-opts');
-const browserOpts = document.getElementById('browser-opts');
-const lyricsToggle = document.getElementById('lyricsToggle');
-const lyricsStatus = document.getElementById('lyricsStatus');
-const dlBtn = document.getElementById('dlBtn');
-const equalizer = document.getElementById('equalizer');
-const notification = document.getElementById('notification');
-const notificationTitle = document.getElementById('notificationTitle');
-const notificationMessage = document.getElementById('notificationMessage');
-const popupOverlay = document.getElementById('popupOverlay');
-const lyricsTag = document.getElementById('lyricsTag');
-const aiTag = document.getElementById('aiTag');
 const downloadCount = document.getElementById('downloadCount');
 const settingsModal = document.getElementById('settingsModal');
 const pageModal = document.getElementById('pageModal');
 const pageModalTitle = document.getElementById('pageModalTitle');
 const pageModalContent = document.getElementById('pageModalContent');
-
-// Popup elements
-const platformHeader = document.getElementById('platformHeader');
-const platformIcon = document.getElementById('platformIcon');
-const platformName = document.getElementById('platformName');
-const platformDesc = document.getElementById('platformDesc');
-const formatGrid = document.getElementById('formatGrid');
-const popupLyricsOption = document.getElementById('popupLyricsOption');
-const popupLyricsSwitch = document.getElementById('popupLyricsSwitch');
-const platformSpecificOptions = document.getElementById('platformSpecificOptions');
-const setDefaultCheckbox = document.getElementById('setDefaultCheckbox');
-const defaultFormatPreview = document.getElementById('defaultFormatPreview');
-const defaultQualityPreview = document.getElementById('defaultQualityPreview');
-const platformNameText = document.getElementById('platformNameText');
-const platformNameCheckbox = document.getElementById('platformNameCheckbox');
+const notification = document.getElementById('notification');
+const notificationTitle = document.getElementById('notificationTitle');
+const notificationMessage = document.getElementById('notificationMessage');
 
 // --- FUNCTIONS ---
 
@@ -145,9 +115,8 @@ async function processInput() {
     // Load default settings if available
     loadDefaultSettings();
     
-    // Show popup with all options
-    showPopup();
-    customizePopup(currentPlatform);
+    // Show bottom sheet for long content
+    showBottomSheet();
 }
 
 // Search Media Function
@@ -221,366 +190,76 @@ function detectPlatform(url) {
     return 'unknown';
 }
 
-// Customize popup based on platform
-function customizePopup(platform) {
-    // Reset all format options visibility
-    document.querySelectorAll('.format-option').forEach(option => {
-        option.style.display = 'flex';
+// Show bottom sheet modal
+function showBottomSheet() {
+    bottomSheet.classList.add('show');
+    
+    // Update download count
+    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
+    downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
+    
+    // Enable download button by default since Classic MP3 is pre-selected
+    downloadBtn.disabled = false;
+}
+
+// Close bottom sheet modal
+function closeBottomSheet() {
+    bottomSheet.classList.remove('show');
+}
+
+// Handle format selection
+document.querySelectorAll('input[name="format"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        selectedFormat = this.value;
+        downloadBtn.disabled = false;
     });
-    
-    // Clear platform specific options
-    platformSpecificOptions.innerHTML = '';
-    
-    // Platform specific configurations
-    const platformConfigs = {
-        youtube: {
-            name: 'YouTube',
-            icon: 'fab fa-youtube',
-            desc: 'Download videos, music, and playlists from YouTube',
-            formats: ['video', 'audio', 'playlist'],
-            options: [
-                { title: 'Download Subtitles', desc: 'Include subtitles in your download' },
-                { title: 'Extract Thumbnail', desc: 'Save video thumbnail separately' }
-            ]
-        },
-        instagram: {
-            name: 'Instagram',
-            icon: 'fab fa-instagram',
-            desc: 'Download posts, reels, stories, and IGTV content',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download Without Watermark', desc: 'Remove Instagram watermark from reels' },
-                { title: 'Download Profile Picture', desc: 'Save profile picture in HD' }
-            ]
-        },
-        tiktok: {
-            name: 'TikTok',
-            icon: 'fab fa-tiktok',
-            desc: 'Download TikTok videos without watermark',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download Without Watermark', desc: 'Remove TikTok watermark automatically' },
-                { title: 'Extract Sound', desc: 'Get the original sound used in the video' }
-            ]
-        },
-        facebook: {
-            name: 'Facebook',
-            icon: 'fab fa-facebook',
-            desc: 'Download videos from Facebook posts and reels',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download HD Quality', desc: 'Get the highest available quality' },
-                { title: 'Download Comments', desc: 'Save video comments as text file' }
-            ]
-        },
-        twitter: {
-            name: 'Twitter',
-            icon: 'fab fa-twitter',
-            desc: 'Download videos and GIFs from tweets',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download as GIF', desc: 'Save animated content as GIF' },
-                { title: 'Include Tweet Text', desc: 'Save tweet text with the video' }
-            ]
-        },
-        telegram: {
-            name: 'Telegram',
-            icon: 'fab fa-telegram',
-            desc: 'Download files from Telegram channels and chats',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download Channel Files', desc: 'Download entire channel content' },
-                { title: 'Extract Metadata', desc: 'Save file information' }
-            ]
-        },
-        terabox: {
-            name: 'Terabox',
-            icon: 'fas fa-cloud',
-            desc: 'Download files from your Terabox cloud storage',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download Folder', desc: 'Download entire folders as ZIP' },
-                { title: 'Resume Download', desc: 'Support for paused downloads' }
-            ]
-        },
-        streamnet: {
-            name: 'StreamNet',
-            icon: 'fas fa-network-wired',
-            desc: 'Download videos from StreamNet platform',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download Subtitles', desc: 'Include available subtitles' },
-                { title: 'Batch Download', desc: 'Download multiple videos at once' }
-            ]
-        },
-        diskwala: {
-            name: 'DiskWala',
-            icon: 'fas fa-hdd',
-            desc: 'Download files from DiskWala cloud storage',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Download Folder', desc: 'Download entire folders' },
-                { title: 'Direct Download', desc: 'Get direct download links' }
-            ]
-        },
-        sora: {
-            name: 'Sora 2 AI',
-            icon: 'fas fa-brain',
-            desc: 'Download AI-generated videos and extract prompts',
-            formats: ['sora', 'video', 'audio'],
-            options: [
-                { title: 'Extract AI Prompt', desc: 'Get the text prompt used to generate this video' },
-                { title: 'Upscale to 4K', desc: 'Enhance video quality using AI' }
-            ]
-        },
-        unknown: {
-            name: 'Unknown Platform',
-            icon: 'fas fa-link',
-            desc: 'Download media from this website',
-            formats: ['video', 'audio'],
-            options: [
-                { title: 'Auto-detect Media', desc: 'Automatically find downloadable media' },
-                { title: 'Browser Mode', desc: 'Use built-in browser to download' }
-            ]
-        }
-    };
-    
-    const config = platformConfigs[platform] || platformConfigs.unknown;
-    
-    // Update platform header
-    platformIcon.innerHTML = `<i class="${config.icon}"></i>`;
-    platformName.textContent = config.name;
-    platformDesc.textContent = config.desc;
-    
-    // Update platform name in default settings section
-    platformNameText.textContent = config.name;
-    platformNameCheckbox.textContent = config.name;
-    
-    // Show/hide format options based on platform
-    document.querySelectorAll('.format-option').forEach(option => {
-        const format = option.getAttribute('data-format');
-        if (config.formats.includes(format)) {
-            option.style.display = 'flex';
-        } else {
-            option.style.display = 'none';
-        }
-    });
-    
-    // Add platform specific options
-    config.options.forEach(option => {
-        const optionDiv = document.createElement('div');
-        optionDiv.className = 'platform-option';
-        optionDiv.innerHTML = `
-            <div>
-                <div class="platform-option-title">${option.title}</div>
-                <div class="platform-option-desc">${option.desc}</div>
-            </div>
-            <div class="switch" onclick="this.classList.toggle('checked')"></div>
-        `;
-        platformSpecificOptions.appendChild(optionDiv);
-    });
-    
-    // Load platform default settings
-    if (platformSettings[platform]) {
-        selectedFormat = platformSettings[platform].format;
-        selectedQuality = platformSettings[platform].quality;
-        
-        // Update UI to reflect loaded settings
-        document.querySelectorAll('.format-option').forEach(el => {
-            el.classList.remove('selected');
-            if (el.getAttribute('data-format') === selectedFormat) {
-                el.classList.add('selected');
-            }
-        });
-        
-        document.querySelectorAll('.quality-option').forEach(el => {
-            el.classList.remove('selected');
-            if (el.getAttribute('onclick').includes(`'${selectedQuality}'`)) {
-                el.classList.add('selected');
-            }
-        });
-        
-        updateDefaultPreview();
+});
+
+// Start download from bottom sheet
+function startDownload() {
+    if (!selectedFormat) {
+        showNotification('Error', 'Please select a format');
+        return;
     }
+    
+    // Close bottom sheet
+    closeBottomSheet();
+    
+    // Simulate download
+    simulateDownload(selectedFormat);
 }
 
 // Direct download for short content
 function startDirectDownload(url) {
-    // Transition Animation
-    searchSection.style.marginTop = "20px";
-    searchSection.querySelector('h1').style.display = 'none';
-    searchSection.querySelector('p').style.display = 'none';
+    // Update download count
+    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
+    downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
     
-    // Show Dashboard
-    dashboard.style.display = 'block';
-    
-    // Mock Metadata
-    document.getElementById('mediaTitle').innerText = "Short Content";
-    document.getElementById('mediaArtist').innerText = "Direct Download";
-    document.getElementById('albumArt').src = `https://source.unsplash.com/random/600x600/?abstract,neon,${Math.random()}`;
-    
-    // Start download directly
-    startDl('Short Content');
+    // Simulate direct download
+    simulateDownload('direct-short');
     
     // Show notification
     showNotification('Download Started', 'Short content detected. Downloading in best quality...');
 }
 
-// Show popup
-function showPopup() {
-    popupOverlay.classList.add('show');
+// Simulate download process
+function simulateDownload(format) {
+    let formatName = format;
     
-    // Set default selections
-    document.querySelectorAll('.format-option').forEach(el => {
-        el.classList.remove('selected');
-        if (el.getAttribute('data-format') === defaultSettings.format) {
-            el.classList.add('selected');
-        }
-    });
-    
-    document.querySelectorAll('.quality-option').forEach(el => {
-        el.classList.remove('selected');
-        if (el.getAttribute('onclick').includes(`'${defaultSettings.quality}'`)) {
-            el.classList.add('selected');
-        }
-    });
-    
-    // Update default preview
-    updateDefaultPreview();
-    
-    // Show/hide lyrics option based on format
-    if (defaultSettings.format === 'audio') {
-        popupLyricsOption.style.display = 'flex';
-        if (defaultSettings.lyrics) {
-            popupLyricsSwitch.classList.add('checked');
-        } else {
-            popupLyricsSwitch.classList.remove('checked');
-        }
-    } else {
-        popupLyricsOption.style.display = 'none';
-    }
-}
-
-// Close popup
-function closePopup() {
-    popupOverlay.classList.remove('show');
-}
-
-// Select format
-function selectFormat(element, format) {
-    document.querySelectorAll('.format-option').forEach(el => {
-        el.classList.remove('selected');
-    });
-    element.classList.add('selected');
-    selectedFormat = format;
-    
-    // Show/hide lyrics option based on format
-    if (format === 'audio') {
-        popupLyricsOption.style.display = 'flex';
-    } else {
-        popupLyricsOption.style.display = 'none';
-    }
-    
-    updateDefaultPreview();
-}
-
-// Select quality
-function selectQuality(element, quality) {
-    document.querySelectorAll('.quality-option').forEach(el => {
-        el.classList.remove('selected');
-    });
-    element.classList.add('selected');
-    selectedQuality = quality;
-    
-    updateDefaultPreview();
-}
-
-// Toggle lyrics in popup
-function togglePopupLyrics() {
-    popupLyricsSwitch.classList.toggle('checked');
-    lyricsEnabled = popupLyricsSwitch.classList.contains('checked');
-}
-
-// Toggle default settings
-function toggleDefaultSettings() {
-    setDefaultCheckbox.classList.toggle('checked');
-}
-
-// Update default preview
-function updateDefaultPreview() {
-    const formatMap = {
-        'video': 'Video',
-        'audio': 'Audio',
-        'playlist': 'Playlist',
-        'sora': 'Sora 2 AI'
-    };
-    
-    const qualityMap = {
-        'highest': 'Highest Quality',
-        'high': 'High Quality',
-        'medium': 'Medium Quality',
-        'low': 'Low Quality'
-    };
-    
-    defaultFormatPreview.textContent = formatMap[selectedFormat] || 'Video';
-    defaultQualityPreview.textContent = qualityMap[selectedQuality] || 'High Quality';
-}
-
-// Confirm download from popup
-function confirmDownload() {
-    // Save settings if checkbox is checked
-    if (setDefaultCheckbox.classList.contains('checked')) {
-        defaultSettings = {
-            format: selectedFormat,
-            quality: selectedQuality,
-            lyrics: lyricsEnabled
-        };
-        saveDefaultSettings();
-        showNotification('Settings Saved', 'Your default download settings have been saved');
-    }
-    
-    // Save platform specific settings
-    if (currentPlatform && platformSettings[currentPlatform]) {
-        platformSettings[currentPlatform] = {
-            format: selectedFormat,
-            quality: selectedQuality
-        };
-        savePlatformSettings();
-    }
-    
-    closePopup();
-    
-    // Transition Animation
-    searchSection.style.marginTop = "20px";
-    searchSection.querySelector('h1').style.display = 'none';
-    searchSection.querySelector('p').style.display = 'none';
-    
-    // Show Dashboard
-    dashboard.style.display = 'block';
-    
-    // Mock Metadata
-    document.getElementById('mediaTitle').innerText = input.value.includes('http') ? "Detected Link Media" : input.value;
-    document.getElementById('mediaArtist').innerText = "Various Artists";
-    document.getElementById('albumArt').src = `https://source.unsplash.com/random/600x600/?abstract,neon,${Math.random()}`;
-    
-    // Set mode based on selection
-    setMode(selectedFormat);
-    
-    // Set lyrics state
-    if (selectedFormat === 'audio') {
-        lyricsEnabled = popupLyricsSwitch.classList.contains('checked');
-        if (lyricsEnabled) {
-            lyricsToggle.classList.add('active');
-            lyricsStatus.innerText = "Lyrics will be embedded into MP3.";
-        } else {
-            lyricsToggle.classList.remove('active');
-            lyricsStatus.innerText = "Clean Audio Only (No Metadata).";
-        }
-        updateAudioButton();
-    }
+    if (format === 'classic-mp3') formatName = 'Classic MP3';
+    else if (format === 'fast-mp3') formatName = 'Fast MP3';
+    else if (format === 'fast-360p') formatName = 'Fast (360p)';
+    else if (format === 'high-720p') formatName = 'High quality (720p)';
+    else if (format === '1080p-hd') formatName = '1080p HD';
+    else if (format === 'direct-short') formatName = 'Short Content';
     
     // Show notification
-    showNotification('Media Found', `Ready to download in ${selectedQuality} quality!`);
+    showNotification('Download Started', `Downloading ${formatName}...`);
+    
+    // Simulate download progress
+    setTimeout(() => {
+        showNotification('Download Complete', `${formatName} downloaded successfully!`);
+    }, 2000);
 }
 
 // Save default settings to localStorage
@@ -628,269 +307,6 @@ function resetDefaultSettings() {
         sora: { format: 'sora', quality: 'high' }
     };
     showNotification('Settings Reset', 'Default settings have been reset to factory defaults');
-}
-
-// Switch between Video / Audio / Playlist / Sora 2 AI / Browser tabs
-function setMode(mode) {
-    currentMode = mode;
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    
-    // Hide all option panels
-    videoOpts.style.display = 'none';
-    audioOpts.style.display = 'none';
-    playlistOpts.style.display = 'none';
-    soraOpts.style.display = 'none';
-    browserOpts.style.display = 'none';
-    
-    // Hide all badges
-    lyricsTag.style.display = 'none';
-    aiTag.style.display = 'none';
-    
-    if (mode === 'video') {
-        document.querySelectorAll('.tab')[0].classList.add('active');
-        videoOpts.style.display = 'grid';
-        dlBtn.innerText = "SELECT VIDEO QUALITY ABOVE";
-        dlBtn.style.background = "var(--gradient-primary)";
-    } else if (mode === 'audio') {
-        document.querySelectorAll('.tab')[1].classList.add('active');
-        audioOpts.style.display = 'block';
-        equalizer.style.display = 'block';
-        lyricsTag.style.display = 'flex';
-        updateAudioButton();
-    } else if (mode === 'playlist') {
-        document.querySelectorAll('.tab')[2].classList.add('active');
-        playlistOpts.style.display = 'block';
-        dlBtn.innerText = "DOWNLOAD PLAYLIST";
-        dlBtn.style.background = "var(--gradient-funky)";
-    } else if (mode === 'sora') {
-        document.querySelectorAll('.tab')[3].classList.add('active');
-        soraOpts.style.display = 'block';
-        dlBtn.innerText = "DOWNLOAD SORA 2 AI VIDEO";
-        dlBtn.style.background = "var(--gradient-sora)";
-        dlBtn.classList.add('sora-btn');
-        aiTag.style.display = 'flex';
-    } else if (mode === 'browser') {
-        document.querySelectorAll('.tab')[4].classList.add('active');
-        browserOpts.style.display = 'flex';
-        dlBtn.style.display = 'none'; // Hide the main download button in browser mode
-    }
-}
-
-// Toggle Lyrics Switch
-function toggleLyrics() {
-    lyricsEnabled = !lyricsEnabled;
-    
-    if(lyricsEnabled) {
-        lyricsToggle.classList.add('active');
-        lyricsStatus.innerText = "Lyrics will be embedded into MP3.";
-    } else {
-        lyricsToggle.classList.remove('active');
-        lyricsStatus.innerText = "Clean Audio Only (No Metadata).";
-    }
-    updateAudioButton();
-}
-
-// Update Button Text based on Lyrics State
-function updateAudioButton() {
-    if(lyricsEnabled) {
-        dlBtn.innerText = "DOWNLOAD MP3 + LYRICS";
-        dlBtn.style.background = "var(--gradient-lyrics)";
-    } else {
-        dlBtn.innerText = "DOWNLOAD AUDIO ONLY";
-        dlBtn.style.background = "var(--gradient-primary)";
-    }
-}
-
-// Extract Sora 2 AI Prompt
-function extractPrompt() {
-    aiParsing.classList.add('show');
-    
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += Math.random() * 10;
-        if (progress > 100) progress = 100;
-        
-        aiParsingFill.style.width = progress + "%";
-        
-        // Dynamic Status Text
-        if(progress < 30) aiParsingStatus.innerText = "Analyzing video frames...";
-        else if (progress < 60) aiParsingStatus.innerText = "Detecting AI patterns...";
-        else if (progress < 90) aiParsingStatus.innerText = "Reconstructing prompt...";
-        else {
-            aiParsingStatus.innerText = "Prompt extracted successfully!";
-        }
-
-        if(progress === 100) {
-            clearInterval(interval);
-            
-            setTimeout(() => {
-                aiParsing.classList.remove('show');
-                
-                // Show the extracted prompt
-                const prompt = "A majestic lion walking through a field of wildflowers at sunset, photorealistic, 8K, cinematic lighting";
-                
-                // Create a modal to show the prompt
-                const promptModal = document.createElement('div');
-                promptModal.className = 'popup-overlay show';
-                promptModal.innerHTML = `
-                    <div class="popup">
-                        <div class="popup-header">
-                            <div class="popup-title">Extracted AI Prompt</div>
-                            <button class="popup-close" onclick="this.closest('.popup-overlay').remove()">×</button>
-                        </div>
-                        <div class="popup-content">
-                            <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
-                                <p style="font-family: monospace; line-height: 1.5;">${prompt}</p>
-                            </div>
-                            <div class="popup-actions">
-                                <button class="popup-btn popup-btn-cancel" onclick="this.closest('.popup-overlay').remove()">Close</button>
-                                <button class="popup-btn popup-btn-download" onclick="copyPrompt('${prompt}')">Copy Prompt</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(promptModal);
-            }, 500);
-        }
-    }, 150);
-}
-
-// Copy prompt to clipboard
-function copyPrompt(prompt) {
-    navigator.clipboard.writeText(prompt).then(() => {
-        showNotification('Prompt Copied', 'AI prompt copied to clipboard');
-    });
-}
-
-// Simulate Download
-function startDl(specificFormat) {
-    let formatName = specificFormat === 'Default' ? (currentMode === 'video' ? '1080p' : 'MP3') : specificFormat;
-    
-    // Update download count
-    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
-    downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
-    
-    // Progress UI
-    const pArea = document.getElementById('progress');
-    const pFill = document.getElementById('barFill');
-    const pText = document.getElementById('pText');
-    const pPercent = document.getElementById('pPercent');
-    
-    pArea.style.display = 'block';
-    
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += Math.random() * 8;
-        if (progress > 100) progress = 100;
-        
-        pFill.style.width = progress + "%";
-        pPercent.innerText = Math.floor(progress) + "%";
-        
-        // Dynamic Status Text
-        if(progress < 30) pText.innerText = "Handshaking...";
-        else if (progress < 60) pText.innerText = "Downloading Stream...";
-        else if (progress < 90) {
-            if(currentMode === 'audio' && lyricsEnabled) pText.innerText = "Embedding Lyrics & Cover Art...";
-            else if(currentMode === 'playlist') pText.innerText = "Processing Playlist Items...";
-            else if(currentMode === 'sora') pText.innerText = "Processing AI Video...";
-            else pText.innerText = "Finalizing Conversion...";
-        } else {
-            pText.innerText = "Saving File...";
-        }
-
-        if(progress === 100) {
-            clearInterval(interval);
-            pText.innerText = "Completed!";
-            pText.style.color = "#4ade80"; // Success Green
-            
-            // Show success notification
-            showNotification('Download Complete', `${formatName} downloaded successfully!`);
-            
-            setTimeout(() => {
-                alert(`${formatName} Downloaded!\nLyrics: ${lyricsEnabled && currentMode === 'audio' ? 'Included' : 'None'}\nAI: ${currentMode === 'sora' ? 'Yes' : 'No'}`);
-                pArea.style.display = 'none';
-            }, 500);
-        }
-    }, 150);
-}
-
-// Browser functions
-function browserGo() {
-    const url = browserUrl.value.trim();
-    if (!url) return;
-    
-    // Add to history
-    if (browserHistoryIndex < browserHistory.length - 1) {
-        browserHistory = browserHistory.slice(0, browserHistoryIndex + 1);
-    }
-    browserHistory.push(url);
-    browserHistoryIndex = browserHistory.length - 1;
-    
-    // Update placeholder
-    browserPlaceholder.innerHTML = `
-        <i class="fas fa-spinner fa-spin"></i>
-        <h3>Loading...</h3>
-        <p>Please wait while we load the page</p>
-    `;
-    
-    // Simulate loading
-    setTimeout(() => {
-        browserPlaceholder.innerHTML = `
-            <i class="fas fa-check-circle" style="color: #4ade80;"></i>
-            <h3>Page Loaded</h3>
-            <p>Successfully loaded: ${url.substring(0, 30)}${url.length > 30 ? "..." : ""}</p>
-            <button class="browser-download-btn" onclick="browserDownload()">
-                <i class="fas fa-download"></i> Download Media from Current Page
-            </button>
-        `;
-    }, 1500);
-}
-
-function browserBack() {
-    if (browserHistoryIndex > 0) {
-        browserHistoryIndex--;
-        browserUrl.value = browserHistory[browserHistoryIndex];
-        browserGo();
-    }
-}
-
-function browserForward() {
-    if (browserHistoryIndex < browserHistory.length - 1) {
-        browserHistoryIndex++;
-        browserUrl.value = browserHistory[browserHistoryIndex];
-        browserGo();
-    }
-}
-
-function browserRefresh() {
-    browserGo();
-}
-
-function browserDownload() {
-    const url = browserUrl.value.trim();
-    if (!url) {
-        showNotification('Error', 'Please enter a URL first');
-        return;
-    }
-    
-    // Show dashboard if not already visible
-    if (dashboard.style.display === 'none') {
-        searchSection.style.marginTop = "20px";
-        searchSection.querySelector('h1').style.display = 'none';
-        searchSection.querySelector('p').style.display = 'none';
-        dashboard.style.display = 'block';
-    }
-    
-    // Mock Metadata
-    document.getElementById('mediaTitle').innerText = "Browser Media";
-    document.getElementById('mediaArtist').innerText = "From: " + url.substring(0, 30) + (url.length > 30 ? "..." : "");
-    document.getElementById('albumArt').src = `https://source.unsplash.com/random/600x600/?abstract,neon,${Math.random()}`;
-    
-    // Switch to video mode
-    setMode('video');
-    
-    // Show notification
-    showNotification('Media Found', 'Ready to download from browser!');
 }
 
 // Toggle Theme
@@ -1259,10 +675,6 @@ input.addEventListener('keypress', (e) => {
     if(e.key === 'Enter') processInput(); 
 });
 
-browserUrl.addEventListener('keypress', (e) => { 
-    if(e.key === 'Enter') browserGo(); 
-});
-
 // Close menu on outside click
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.menu-btn') && !e.target.closest('.dropdown-menu') && !e.target.closest('.instagram-btn')) {
@@ -1272,26 +684,11 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('.lang-toggle') && !e.target.closest('.lang-dropdown')) {
         langDropdown.classList.remove('show');
     }
-});
-
-// Add some interactive effects
-document.querySelectorAll('.dl-card').forEach(card => {
-    card.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-5px) scale(1.02)';
-    });
     
-    card.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(0) scale(1)';
-    });
-});
-
-// Animate equalizer bars on hover
-document.querySelectorAll('.eq-bar').forEach(bar => {
-    bar.addEventListener('mouseenter', function() {
-        const fill = this.querySelector('.eq-fill');
-        const randomHeight = Math.floor(Math.random() * 70) + 30;
-        fill.style.height = `${randomHeight}%`;
-    });
+    // Close bottom sheet when clicking outside
+    if (bottomSheet.classList.contains('show') && !e.target.closest('.bottom-sheet')) {
+        closeBottomSheet();
+    }
 });
 
 // Simulate live download count updates
