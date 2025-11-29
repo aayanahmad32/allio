@@ -4,20 +4,21 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/style.css',
   '/script.js',
-  '/manifest.json'
+  '/manifest.json',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap'
 ];
 
 // Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-    .then((cache) => {
+    caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate Event
+// Activate Event (Cleanup old caches)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -34,39 +35,33 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event
 self.addEventListener('fetch', (event) => {
+  // Network first for API calls or external links, Cache first for static assets
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
   event.respondWith(
-    caches.match(event.request)
-    .then((response) => {
-      // Cache hit - return response
-      if (response) {
-        return response;
+    caches.match(event.request).then((cachedResponse) => {
+      // Return cached response if found
+      if (cachedResponse) {
+        return cachedResponse;
       }
       
-      // Clone the request
-      const fetchRequest = event.request.clone();
-      
-      return fetch(fetchRequest).then(
-        (response) => {
-          // Check if we received a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          
-          // Don't cache external links automatically (optional)
-          if (event.request.url.startsWith('http') && !event.request.url.includes(self.location.hostname)) {
-            return response;
-          }
-          
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          
+      // Otherwise fetch from network
+      return fetch(event.request).then((response) => {
+        // Don't cache valid API responses or non-basic requests
+        if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
-      );
+        
+        // Clone response to put in cache
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
+        
+        return response;
+      });
     })
   );
 });

@@ -27,14 +27,40 @@ let platformSettings = {
     sora: { format: 'sora', quality: 'high' }
 };
 
+// App Launcher Data
+const appLauncherApps = [
+    { name: 'YouTube', icon: 'fab fa-youtube', color: '#FF0000', url: 'https://youtube.com' },
+    { name: 'Instagram', icon: 'fab fa-instagram', color: '#E1306C', url: 'https://instagram.com' },
+    { name: 'TikTok', icon: 'fab fa-tiktok', color: '#000000', url: 'https://tiktok.com' },
+    { name: 'Facebook', icon: 'fab fa-facebook', color: '#1877F2', url: 'https://facebook.com' },
+    { name: 'Twitter', icon: 'fab fa-twitter', color: '#1DA1F2', url: 'https://twitter.com' },
+    { name: 'Telegram', icon: 'fab fa-telegram', color: '#0088CC', url: 'https://telegram.org' },
+    { name: 'Terabox', icon: 'fas fa-cloud', color: '#00D4AA', url: 'https://terabox.com' },
+    { name: 'StreamNet', icon: 'fas fa-network-wired', color: '#6A5ACD', url: 'https://streamnet.com' },
+    { name: 'DiskWala', icon: 'fas fa-hdd', color: '#FF8C00', url: 'https://diskwala.com' },
+    { name: 'Sora 2 AI', icon: 'fas fa-brain', color: '#FF00FF', url: 'https://openai.com/sora' },
+    { name: 'SoundCloud', icon: 'fab fa-soundcloud', color: '#FF3300', url: 'https://soundcloud.com' },
+    { name: 'Spotify', icon: 'fab fa-spotify', color: '#1DB954', url: 'https://spotify.com' },
+    { name: 'Vimeo', icon: 'fab fa-vimeo', color: '#1AB7EA', url: 'https://vimeo.com' },
+    { name: 'Dailymotion', icon: 'fab fa-dailymotion', color: '#0066DC', url: 'https://dailymotion.com' },
+    { name: 'Twitch', icon: 'fab fa-twitch', color: '#9146FF', url: 'https://twitch.tv' },
+    { name: 'Pinterest', icon: 'fab fa-pinterest', color: '#E60023', url: 'https://pinterest.com' },
+    { name: 'Reddit', icon: 'fab fa-reddit', color: '#FF4500', url: 'https://reddit.com' },
+    { name: 'LinkedIn', icon: 'fab fa-linkedin', color: '#0077B5', url: 'https://linkedin.com' },
+    { name: 'Snapchat', icon: 'fab fa-snapchat', color: '#FFFC00', url: 'https://snapchat.com' },
+    { name: 'News', icon: 'fas fa-newspaper', color: '#3498DB', url: 'https://news.google.com' },
+    { name: 'Bookmark', icon: 'fas fa-bookmark', color: '#F39C12', url: '#' },
+    { name: 'Daily News', icon: 'fas fa-newspaper', color: '#E74C3C', url: 'https://news.google.com' },
+    { name: 'Win Cash', icon: 'fas fa-coins', color: '#2ECC71', url: '#' },
+    { name: 'Status Saver', icon: 'fas fa-save', color: '#9B59B6', url: '#' }
+];
+
 // --- DOM ELEMENTS ---
 const input = document.getElementById('inputUrl');
 const bottomSheet = document.getElementById('bottomSheet');
 const downloadBtn = document.getElementById('downloadBtn');
 const searchSection = document.querySelector('.hero-container');
 const menu = document.getElementById('menu');
-const browserUrl = document.getElementById('browserUrl');
-const browserPlaceholder = document.getElementById('browserPlaceholder');
 const langDropdown = document.getElementById('langDropdown');
 const currentLang = document.getElementById('currentLang');
 const downloadCount = document.getElementById('downloadCount');
@@ -49,6 +75,17 @@ const publicLinkSection = document.getElementById('publicLinkSection');
 const publicLinkInput = document.getElementById('publicLinkInput');
 const downloadHistorySection = document.getElementById('downloadHistorySection');
 const historyList = document.getElementById('historyList');
+
+// New elements for app launcher, browser mode, and direct search
+const appLauncherSection = document.getElementById('appLauncherSection');
+const browserSection = document.getElementById('browserSection');
+const directSearchSection = document.getElementById('directSearchSection');
+const appsGrid = document.getElementById('appsGrid');
+const browserUrlInput = document.getElementById('browserUrlInput');
+const browserIframe = document.getElementById('browserIframe');
+const browserResults = document.getElementById('browserResults');
+const directSearchInput = document.getElementById('directSearchInput');
+const directSearchResults = document.getElementById('directSearchResults');
 
 // --- FUNCTIONS ---
 
@@ -320,6 +357,9 @@ function showPublicLinkSection(downloadData) {
     document.querySelector('.seo-content').style.display = 'none';
     document.querySelector('.ad-banner').style.display = 'none';
     downloadHistorySection.classList.add('hidden');
+    appLauncherSection.classList.add('hidden');
+    browserSection.classList.add('hidden');
+    directSearchSection.classList.add('hidden');
     
     // Show public link section
     publicLinkSection.classList.remove('hidden');
@@ -444,6 +484,9 @@ function showDownloadHistory() {
     document.querySelector('.seo-content').style.display = 'none';
     document.querySelector('.ad-banner').style.display = 'none';
     publicLinkSection.classList.add('hidden');
+    appLauncherSection.classList.add('hidden');
+    browserSection.classList.add('hidden');
+    directSearchSection.classList.add('hidden');
     
     // Show download history section
     downloadHistorySection.classList.remove('hidden');
@@ -471,7 +514,31 @@ function loadDownloadHistory() {
     }
     
     // Display each item
-    downloadHistory.forEach(item => {
+    downloadHistory.forEach((item, index) => {
+        // Add ad banner every 5th item
+        if (index > 0 && index % 5 === 0) {
+            const adBanner = document.createElement('div');
+            adBanner.className = 'history-ad-banner';
+            adBanner.innerHTML = `
+                <div class="ad-container ad-horizontal">
+                    <div class="ad-label">Advertisement</div>
+                    <div class="ad-content">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '478eb9342f285f826b942ea1f9e9db74',
+                                'format' : 'iframe',
+                                'height' : 90,
+                                'width' : 728,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/478eb9342f285f826b942ea1f9e9db74/invoke.js"></script>
+                    </div>
+                </div>
+            `;
+            historyList.appendChild(adBanner);
+        }
+        
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
         historyItem.innerHTML = `
@@ -964,6 +1031,311 @@ function copyShareLink() {
     navigator.clipboard.writeText(link).then(() => {
         showNotification('Link Copied', 'Share link copied to clipboard!');
     });
+}
+
+// App Launcher Functions
+function showAppLauncher() {
+    // Hide other sections
+    searchSection.style.display = 'none';
+    document.querySelector('.seo-content').style.display = 'none';
+    document.querySelector('.ad-banner').style.display = 'none';
+    publicLinkSection.classList.add('hidden');
+    downloadHistorySection.classList.add('hidden');
+    browserSection.classList.add('hidden');
+    directSearchSection.classList.add('hidden');
+    
+    // Show app launcher section
+    appLauncherSection.classList.remove('hidden');
+    
+    // Load apps
+    loadAppLauncherApps();
+    
+    // Close menu
+    menu.classList.remove('show');
+}
+
+function closeAppLauncher() {
+    appLauncherSection.classList.add('hidden');
+    searchSection.style.display = 'block';
+    document.querySelector('.seo-content').style.display = 'block';
+    document.querySelector('.ad-banner').style.display = 'block';
+}
+
+function loadAppLauncherApps() {
+    appsGrid.innerHTML = '';
+    
+    appLauncherApps.forEach(app => {
+        const appItem = document.createElement('div');
+        appItem.className = 'app-item';
+        appItem.onclick = () => openApp(app);
+        
+        appItem.innerHTML = `
+            <div class="app-icon" style="background: ${app.color}">
+                <i class="${app.icon}"></i>
+            </div>
+            <div class="app-name">${app.name}</div>
+        `;
+        
+        appsGrid.appendChild(appItem);
+    });
+}
+
+function openApp(app) {
+    if (app.url === '#') {
+        showNotification('Coming Soon', `${app.name} will be available soon!`);
+        return;
+    }
+    
+    // For specific apps, open in browser mode
+    if (['YouTube', 'Instagram', 'TikTok', 'Facebook', 'Twitter', 'Telegram', 'SoundCloud', 'Spotify'].includes(app.name)) {
+        showBrowser();
+        browserUrlInput.value = app.url;
+        loadBrowserUrl();
+    } else {
+        // For other apps, open direct search
+        showDirectSearch();
+    }
+}
+
+// Browser Mode Functions
+function showBrowser() {
+    // Hide other sections
+    searchSection.style.display = 'none';
+    document.querySelector('.seo-content').style.display = 'none';
+    document.querySelector('.ad-banner').style.display = 'none';
+    publicLinkSection.classList.add('hidden');
+    downloadHistorySection.classList.add('hidden');
+    appLauncherSection.classList.add('hidden');
+    directSearchSection.classList.add('hidden');
+    
+    // Show browser section
+    browserSection.classList.remove('hidden');
+    
+    // Close menu
+    menu.classList.remove('show');
+}
+
+function closeBrowser() {
+    browserSection.classList.add('hidden');
+    searchSection.style.display = 'block';
+    document.querySelector('.seo-content').style.display = 'block';
+    document.querySelector('.ad-banner').style.display = 'block';
+}
+
+function loadBrowserUrl() {
+    const url = browserUrlInput.value.trim();
+    if (!url) return;
+    
+    // Add https:// if not present
+    let finalUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        finalUrl = 'https://' + url;
+    }
+    
+    // Load URL in iframe
+    browserIframe.src = finalUrl;
+    
+    // Clear previous results
+    browserResults.innerHTML = '';
+    
+    showNotification('Browser', 'Loading website...');
+}
+
+function extractMediaFromBrowser() {
+    // Simulate media extraction
+    showNotification('Extracting', 'Finding media on this page...');
+    
+    setTimeout(() => {
+        // Mock results
+        const mockResults = [
+            { title: 'Video 1', duration: '3:45', size: '12MB' },
+            { title: 'Video 2', duration: '5:20', size: '18MB' },
+            { title: 'Audio 1', duration: '2:30', size: '4MB' },
+            { title: 'Audio 2', duration: '4:15', size: '7MB' },
+            { title: 'Video 3', duration: '7:10', size: '25MB' },
+            { title: 'Video 4', duration: '2:55', size: '9MB' },
+            { title: 'Audio 3', duration: '3:20', size: '5MB' },
+            { title: 'Video 5', duration: '4:45', size: '15MB' },
+            { title: 'Audio 4', duration: '2:10', size: '3MB' },
+            { title: 'Video 6', duration: '6:30', size: '22MB' }
+        ];
+        
+        // Display results with ad banners
+        browserResults.innerHTML = '';
+        
+        mockResults.forEach((result, index) => {
+            // Add ad banner after every 4 results
+            if (index > 0 && index % 4 === 0) {
+                const adBanner = document.createElement('div');
+                adBanner.className = 'browser-result-item';
+                adBanner.innerHTML = `
+                    <div class="ad-container ad-horizontal">
+                        <div class="ad-label">Advertisement</div>
+                        <div class="ad-content">
+                            <script type="text/javascript">
+                                atOptions = {
+                                    'key' : '478eb9342f285f826b942ea1f9e9db74',
+                                    'format' : 'iframe',
+                                    'height' : 90,
+                                    'width' : 728,
+                                    'params' : {}
+                                };
+                            </script>
+                            <script type="text/javascript" src="//www.highperformanceformat.com/478eb9342f285f826b942ea1f9e9db74/invoke.js"></script>
+                        </div>
+                    </div>
+                `;
+                browserResults.appendChild(adBanner);
+            }
+            
+            const resultItem = document.createElement('div');
+            resultItem.className = 'browser-result-item';
+            resultItem.innerHTML = `
+                <div class="browser-result-thumbnail">
+                    <i class="fas fa-${result.title.includes('Audio') ? 'music' : 'video'}"></i>
+                </div>
+                <div class="browser-result-info">
+                    <div class="browser-result-title">${result.title}</div>
+                    <div class="browser-result-meta">
+                        <span><i class="fas fa-clock"></i> ${result.duration}</span>
+                        <span><i class="fas fa-file"></i> ${result.size}</span>
+                    </div>
+                </div>
+                <div class="browser-result-actions">
+                    <button class="browser-result-btn" onclick="downloadFromBrowser('${result.title}')">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+            `;
+            browserResults.appendChild(resultItem);
+        });
+        
+        showNotification('Extraction Complete', `Found ${mockResults.length} media files`);
+    }, 2000);
+}
+
+function downloadFromBrowser(title) {
+    // Simulate download from browser
+    showNotification('Download Started', `Downloading ${title}...`);
+    
+    setTimeout(() => {
+        showNotification('Download Complete', `${title} downloaded successfully!`);
+        
+        // Add to download history
+        const downloadData = {
+            id: generateUniqueId(),
+            url: browserUrlInput.value,
+            title: title,
+            platform: 'Browser',
+            format: 'video',
+            quality: 'high',
+            isShortContent: false,
+            timestamp: new Date().toISOString()
+        };
+        
+        addToDownloadHistory(downloadData);
+    }, 2000);
+}
+
+// Direct Search Functions
+function showDirectSearch() {
+    // Hide other sections
+    searchSection.style.display = 'none';
+    document.querySelector('.seo-content').style.display = 'none';
+    document.querySelector('.ad-banner').style.display = 'none';
+    publicLinkSection.classList.add('hidden');
+    downloadHistorySection.classList.add('hidden');
+    appLauncherSection.classList.add('hidden');
+    browserSection.classList.add('hidden');
+    
+    // Show direct search section
+    directSearchSection.classList.remove('hidden');
+    
+    // Close menu
+    menu.classList.remove('show');
+}
+
+function closeDirectSearch() {
+    directSearchSection.classList.add('hidden');
+    searchSection.style.display = 'block';
+    document.querySelector('.seo-content').style.display = 'block';
+    document.querySelector('.ad-banner').style.display = 'block';
+}
+
+function performDirectSearch() {
+    const query = directSearchInput.value.trim();
+    if (!query) return;
+    
+    showNotification('Searching', `Finding: ${query}`);
+    
+    // Simulate search
+    setTimeout(() => {
+        // Mock results
+        const mockResults = [
+            { title: `${query} - Official Video`, platform: 'YouTube', duration: '3:45', views: '1.2M' },
+            { title: `${query} - Audio Version`, platform: 'Spotify', duration: '3:45', views: '800K' },
+            { title: `${query} - TikTok Remix`, platform: 'TikTok', duration: '0:45', views: '5.2M' },
+            { title: `${query} - Live Performance`, platform: 'YouTube', duration: '5:20', views: '2.4M' },
+            { title: `${query} - Cover Version`, platform: 'Instagram', duration: '2:30', views: '450K' },
+            { title: `${query} - Lyric Video`, platform: 'YouTube', duration: '3:45', views: '3.1M' },
+            { title: `${query} - Dance Cover`, platform: 'TikTok', duration: '1:00', views: '8.7M' },
+            { title: `${query} - Acoustic Version`, platform: 'SoundCloud', duration: '4:15', views: '320K' },
+            { title: `${query} - Remix`, platform: 'Spotify', duration: '3:20', views: '680K' },
+            { title: `${query} - Behind the Scenes`, platform: 'YouTube', duration: '7:10', views: '1.8M' }
+        ];
+        
+        // Display results
+        directSearchResults.innerHTML = '';
+        
+        mockResults.forEach((result, index) => {
+            const resultItem = document.createElement('div');
+            resultItem.className = 'direct-search-item';
+            resultItem.innerHTML = `
+                <div class="direct-search-thumbnail">
+                    <i class="fas fa-${result.platform === 'Spotify' || result.platform === 'SoundCloud' ? 'music' : 'video'}"></i>
+                </div>
+                <div class="direct-search-info">
+                    <div class="direct-search-title">${result.title}</div>
+                    <div class="direct-search-meta">
+                        <span><i class="fas fa-globe"></i> ${result.platform}</span>
+                        <span><i class="fas fa-clock"></i> ${result.duration}</span>
+                        <span><i class="fas fa-eye"></i> ${result.views}</span>
+                    </div>
+                </div>
+                <div class="direct-search-actions">
+                    <button class="direct-search-btn" onclick="downloadFromDirectSearch('${result.title}', '${result.platform}')">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+            `;
+            directSearchResults.appendChild(resultItem);
+        });
+        
+        showNotification('Search Complete', `Found ${mockResults.length} results`);
+    }, 1500);
+}
+
+function downloadFromDirectSearch(title, platform) {
+    // Simulate download from direct search
+    showNotification('Download Started', `Downloading ${title}...`);
+    
+    setTimeout(() => {
+        showNotification('Download Complete', `${title} downloaded successfully!`);
+        
+        // Add to download history
+        const downloadData = {
+            id: generateUniqueId(),
+            url: 'https://example.com',
+            title: title,
+            platform: platform,
+            format: 'video',
+            quality: 'high',
+            isShortContent: false,
+            timestamp: new Date().toISOString()
+        };
+        
+        addToDownloadHistory(downloadData);
+    }, 2000);
 }
 
 // Enter Key Support

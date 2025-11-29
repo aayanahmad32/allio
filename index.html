@@ -152,7 +152,10 @@
         <!-- 3 Dot Menu -->
         <div class="dropdown-menu" id="menu">
             <div class="d-item" onclick="location.reload()">🏠 Home</div>
-            <div class="d-item" onclick="showNotification('Batch Downloader', 'Coming soon!')">📦 Batch Downloader</div>
+            <div class="d-item" onclick="showAppLauncher()">📱 App Launcher</div>
+            <div class="d-item" onclick="showBrowser()">🌐 Browser Mode</div>
+            <div class="d-item" onclick="showDirectSearch()">🔍 Direct Search</div>
+            <div class="d-item" onclick="location.reload()">📦 Batch Downloader</div>
             <div class="d-item" onclick="showDownloadHistory()">📋 Download History</div>
             <div class="d-item" onclick="togglePrivateMode()">🔒 Private Mode</div>
             <div class="d-item" onclick="toggleTheme()">🌓 Theme</div>
@@ -218,6 +221,57 @@
                 </div>
             </div>
         </div>
+
+        <!-- APP LAUNCHER SECTION -->
+        <section id="appLauncherSection" class="hidden">
+            <div class="container glass-panel">
+                <div class="section-header">
+                    <h2>App Launcher</h2>
+                    <button class="close-section-btn" onclick="closeAppLauncher()">×</button>
+                </div>
+                <div class="apps-grid" id="appsGrid">
+                    <!-- Apps will be dynamically added here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- BROWSER MODE SECTION -->
+        <section id="browserSection" class="hidden">
+            <div class="container glass-panel">
+                <div class="section-header">
+                    <h2>Browser Mode</h2>
+                    <button class="close-section-btn" onclick="closeBrowser()">×</button>
+                </div>
+                <div class="browser-controls">
+                    <input type="text" id="browserUrlInput" placeholder="Enter website URL..." class="browser-url-input">
+                    <button class="browser-go-btn" onclick="loadBrowserUrl()">Go</button>
+                    <button class="browser-extract-btn" onclick="extractMediaFromBrowser()">Extract Media</button>
+                </div>
+                <div class="browser-iframe-container">
+                    <iframe id="browserIframe" src="" frameborder="0"></iframe>
+                </div>
+                <div id="browserResults" class="browser-results">
+                    <!-- Extracted media will be shown here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- DIRECT SEARCH SECTION -->
+        <section id="directSearchSection" class="hidden">
+            <div class="container glass-panel">
+                <div class="section-header">
+                    <h2>Direct Search</h2>
+                    <button class="close-section-btn" onclick="closeDirectSearch()">×</button>
+                </div>
+                <div class="direct-search-form">
+                    <input type="text" id="directSearchInput" placeholder="Search for music, video, audio..." class="direct-search-input">
+                    <button class="direct-search-btn" onclick="performDirectSearch()">Search</button>
+                </div>
+                <div id="directSearchResults" class="direct-search-results">
+                    <!-- Results will be shown here -->
+                </div>
+            </div>
+        </section>
 
         <!-- SEO CONTENT SECTION -->
         <section class="seo-content">
