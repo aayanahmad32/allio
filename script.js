@@ -9,6 +9,10 @@ let browserHistory = [];
 let browserHistoryIndex = -1;
 let currentLanguage = 'en';
 let currentPlatform = '';
+let currentUrl = '';
+let currentTitle = '';
+let publicLinkId = '';
+let downloadHistory = [];
 let defaultSettings = {
     format: 'video',
     quality: 'high',
@@ -41,6 +45,10 @@ const pageModalContent = document.getElementById('pageModalContent');
 const notification = document.getElementById('notification');
 const notificationTitle = document.getElementById('notificationTitle');
 const notificationMessage = document.getElementById('notificationMessage');
+const publicLinkSection = document.getElementById('publicLinkSection');
+const publicLinkInput = document.getElementById('publicLinkInput');
+const downloadHistorySection = document.getElementById('downloadHistorySection');
+const historyList = document.getElementById('historyList');
 
 // --- FUNCTIONS ---
 
@@ -105,10 +113,11 @@ async function processInput() {
     
     // Check platform type
     currentPlatform = detectPlatform(val);
+    currentUrl = val;
     
     if (isShortContent) {
         // Direct download for short content
-        startDirectDownload(val);
+        handleShortContentDownload(val);
         return;
     }
     
@@ -215,8 +224,51 @@ document.querySelectorAll('input[name="format"]').forEach(radio => {
     });
 });
 
-// Start download from bottom sheet
-function startDownload() {
+// Handle short content download
+function handleShortContentDownload(url) {
+    // Update download count
+    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
+    downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
+    
+    // Generate title
+    currentTitle = `Short Content - ${currentPlatform}`;
+    
+    // Generate public link
+    generatePublicLinkForShortContent(url);
+    
+    // Show notification
+    showNotification('Download Ready', 'Short content link generated successfully!');
+}
+
+// Generate public link for short content
+function generatePublicLinkForShortContent(url) {
+    // Create a unique ID for this download
+    publicLinkId = generateUniqueId();
+    
+    // Create download data
+    const downloadData = {
+        id: publicLinkId,
+        url: url,
+        title: currentTitle,
+        platform: currentPlatform,
+        format: 'video',
+        quality: 'high',
+        isShortContent: true,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Store in localStorage (simulate backend)
+    localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(downloadData));
+    
+    // Show public link section
+    showPublicLinkSection(downloadData);
+    
+    // Add to history
+    addToDownloadHistory(downloadData);
+}
+
+// Generate public link
+function generatePublicLink() {
     if (!selectedFormat) {
         showNotification('Error', 'Please select a format');
         return;
@@ -225,25 +277,112 @@ function startDownload() {
     // Close bottom sheet
     closeBottomSheet();
     
-    // Simulate download
-    simulateDownload(selectedFormat);
-}
-
-// Direct download for short content
-function startDirectDownload(url) {
-    // Update download count
-    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
-    downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
+    // Create a unique ID for this download
+    publicLinkId = generateUniqueId();
     
-    // Simulate direct download
-    simulateDownload('direct-short');
+    // Generate title based on platform
+    currentTitle = `${currentPlatform.charAt(0).toUpperCase() + currentPlatform.slice(1)} Video`;
+    
+    // Create download data
+    const downloadData = {
+        id: publicLinkId,
+        url: currentUrl,
+        title: currentTitle,
+        platform: currentPlatform,
+        format: selectedFormat,
+        quality: selectedQuality,
+        isShortContent: false,
+        timestamp: new Date().toISOString()
+    };
+    
+    // Store in localStorage (simulate backend)
+    localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(downloadData));
+    
+    // Show public link section
+    showPublicLinkSection(downloadData);
+    
+    // Add to history
+    addToDownloadHistory(downloadData);
     
     // Show notification
-    showNotification('Download Started', 'Short content detected. Downloading in best quality...');
+    showNotification('Link Generated', 'Your download link is ready!');
+}
+
+// Generate unique ID
+function generateUniqueId() {
+    return 'dl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Show public link section
+function showPublicLinkSection(downloadData) {
+    // Hide other sections
+    searchSection.style.display = 'none';
+    document.querySelector('.seo-content').style.display = 'none';
+    document.querySelector('.ad-banner').style.display = 'none';
+    downloadHistorySection.classList.add('hidden');
+    
+    // Show public link section
+    publicLinkSection.classList.remove('hidden');
+    
+    // Update public link input
+    const publicLink = `${window.location.origin}/download/${downloadData.id}`;
+    publicLinkInput.value = publicLink;
+    
+    // Update download info
+    document.getElementById('downloadTitle').textContent = downloadData.title;
+    document.getElementById('downloadPlatform').textContent = downloadData.platform.charAt(0).toUpperCase() + downloadData.platform.slice(1);
+    document.getElementById('downloadFormat').textContent = downloadData.format.charAt(0).toUpperCase() + downloadData.format.slice(1);
+    document.getElementById('downloadQuality').textContent = downloadData.quality.charAt(0).toUpperCase() + downloadData.quality.slice(1);
+}
+
+// Copy public link
+function copyPublicLink() {
+    publicLinkInput.select();
+    document.execCommand('copy');
+    showNotification('Link Copied', 'Download link copied to clipboard!');
+}
+
+// Generate new link
+function generateNewLink() {
+    // Generate new ID
+    publicLinkId = generateUniqueId();
+    
+    // Get existing download data
+    const existingData = JSON.parse(localStorage.getItem(`download_${publicLinkId}`) || '{}');
+    
+    // Update with new ID
+    existingData.id = publicLinkId;
+    existingData.timestamp = new Date().toISOString();
+    
+    // Store new data
+    localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(existingData));
+    
+    // Update public link
+    const publicLink = `${window.location.origin}/download/${publicLinkId}`;
+    publicLinkInput.value = publicLink;
+    
+    showNotification('New Link Generated', 'A new download link has been created!');
+}
+
+// Download from public link
+function downloadFromPublicLink() {
+    // Get download data
+    const downloadData = JSON.parse(localStorage.getItem(`download_${publicLinkId}`));
+    
+    if (!downloadData) {
+        showNotification('Error', 'Download link expired or invalid');
+        return;
+    }
+    
+    // Simulate download
+    simulateDownload(downloadData.format, downloadData.title);
+    
+    // Update history with download status
+    updateDownloadHistoryStatus(publicLinkId, 'completed');
 }
 
 // Simulate download process
-function simulateDownload(format) {
+function simulateDownload(format, title) {
     let formatName = format;
     
     if (format === 'classic-mp3') formatName = 'Classic MP3';
@@ -258,8 +397,165 @@ function simulateDownload(format) {
     
     // Simulate download progress
     setTimeout(() => {
-        showNotification('Download Complete', `${formatName} downloaded successfully!`);
+        showNotification('Download Complete', `${title} downloaded successfully!`);
     }, 2000);
+}
+
+// Add to download history
+function addToDownloadHistory(downloadData) {
+    // Load existing history
+    const history = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+    
+    // Add new item
+    history.unshift({
+        ...downloadData,
+        status: 'pending',
+        downloadDate: new Date().toLocaleDateString()
+    });
+    
+    // Keep only last 50 items
+    if (history.length > 50) {
+        history.pop();
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('downloadHistory', JSON.stringify(history));
+    
+    // Update global variable
+    downloadHistory = history;
+}
+
+// Update download history status
+function updateDownloadHistoryStatus(id, status) {
+    const history = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+    
+    const item = history.find(item => item.id === id);
+    if (item) {
+        item.status = status;
+        localStorage.setItem('downloadHistory', JSON.stringify(history));
+        downloadHistory = history;
+    }
+}
+
+// Show download history
+function showDownloadHistory() {
+    // Hide other sections
+    searchSection.style.display = 'none';
+    document.querySelector('.seo-content').style.display = 'none';
+    document.querySelector('.ad-banner').style.display = 'none';
+    publicLinkSection.classList.add('hidden');
+    
+    // Show download history section
+    downloadHistorySection.classList.remove('hidden');
+    
+    // Load and display history
+    loadDownloadHistory();
+}
+
+// Load download history
+function loadDownloadHistory() {
+    // Load from localStorage
+    downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+    
+    // Clear existing list
+    historyList.innerHTML = '';
+    
+    if (downloadHistory.length === 0) {
+        historyList.innerHTML = `
+            <div class="empty-history">
+                <i class="fas fa-download"></i>
+                <p>No download history yet</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Display each item
+    downloadHistory.forEach(item => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        historyItem.innerHTML = `
+            <div class="history-thumbnail">
+                <i class="fas fa-${getPlatformIcon(item.platform)}"></i>
+            </div>
+            <div class="history-details">
+                <div class="history-title">${item.title}</div>
+                <div class="history-meta">
+                    <span><i class="fas fa-globe"></i> ${item.platform}</span>
+                    <span><i class="fas fa-file"></i> ${item.format}</span>
+                    <span><i class="fas fa-calendar"></i> ${item.downloadDate}</span>
+                </div>
+            </div>
+            <div class="history-actions">
+                <button class="history-btn download" onclick="downloadFromHistory('${item.id}')">
+                    <i class="fas fa-download"></i> Download
+                </button>
+                <button class="history-btn delete" onclick="removeFromHistory('${item.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        historyList.appendChild(historyItem);
+    });
+}
+
+// Get platform icon
+function getPlatformIcon(platform) {
+    const icons = {
+        youtube: 'youtube',
+        instagram: 'instagram',
+        tiktok: 'tiktok',
+        facebook: 'facebook',
+        twitter: 'twitter',
+        telegram: 'telegram',
+        terabox: 'cloud',
+        streamnet: 'network-wired',
+        diskwala: 'hdd',
+        sora: 'brain'
+    };
+    return icons[platform] || 'video';
+}
+
+// Download from history
+function downloadFromHistory(id) {
+    const item = downloadHistory.find(item => item.id === id);
+    if (item) {
+        // Set current data
+        publicLinkId = id;
+        currentUrl = item.url;
+        currentTitle = item.title;
+        currentPlatform = item.platform;
+        
+        // Show public link section
+        showPublicLinkSection(item);
+        
+        // Start download
+        downloadFromPublicLink();
+    }
+}
+
+// Remove from history
+function removeFromHistory(id) {
+    // Filter out the item
+    downloadHistory = downloadHistory.filter(item => item.id !== id);
+    
+    // Save to localStorage
+    localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
+    
+    // Reload history display
+    loadDownloadHistory();
+    
+    showNotification('Removed', 'Item removed from history');
+}
+
+// Clear download history
+function clearDownloadHistory() {
+    if (confirm('Are you sure you want to clear all download history?')) {
+        downloadHistory = [];
+        localStorage.removeItem('downloadHistory');
+        loadDownloadHistory();
+        showNotification('Cleared', 'Download history cleared');
+    }
 }
 
 // Save default settings to localStorage
@@ -703,6 +999,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load saved settings
     loadDefaultSettings();
     
+    // Load download history
+    downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+    
     // Check for shared URL
     const urlParams = new URLSearchParams(window.location.search);
     const sharedUrl = urlParams.get('url');
@@ -710,6 +1009,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sharedUrl) {
         input.value = sharedUrl;
         processInput();
+    }
+    
+    // Check for download ID in URL
+    const downloadId = window.location.pathname.split('/download/')[1];
+    if (downloadId) {
+        const downloadData = JSON.parse(localStorage.getItem(`download_${downloadId}`));
+        if (downloadData) {
+            publicLinkId = downloadId;
+            showPublicLinkSection(downloadData);
+        }
     }
 });
 

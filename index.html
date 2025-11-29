@@ -153,7 +153,7 @@
         <div class="dropdown-menu" id="menu">
             <div class="d-item" onclick="location.reload()">🏠 Home</div>
             <div class="d-item" onclick="showNotification('Batch Downloader', 'Coming soon!')">📦 Batch Downloader</div>
-            <div class="d-item" onclick="showNotification('History', 'Your download history is empty!')">📋 Download History</div>
+            <div class="d-item" onclick="showDownloadHistory()">📋 Download History</div>
             <div class="d-item" onclick="togglePrivateMode()">🔒 Private Mode</div>
             <div class="d-item" onclick="toggleTheme()">🌓 Theme</div>
             <div class="d-item" onclick="openSettings()">⚙️ Platform Settings</div>
@@ -327,6 +327,103 @@
         </div>
     </main>
 
+    <!-- PUBLIC LINK SECTION -->
+    <section id="publicLinkSection" class="hidden">
+        <div class="container glass-panel">
+            <h2>Your Download Link is Ready</h2>
+            <p>Share this link or click the download button to start downloading</p>
+            
+            <div class="public-link-container">
+                <div class="public-link">
+                    <input type="text" id="publicLinkInput" readonly>
+                    <button onclick="copyPublicLink()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+            </div>
+            
+            <div class="download-info">
+                <div class="info-row">
+                    <span class="info-label">Title:</span>
+                    <span class="info-value" id="downloadTitle">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Platform:</span>
+                    <span class="info-value" id="downloadPlatform">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Format:</span>
+                    <span class="info-value" id="downloadFormat">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Quality:</span>
+                    <span class="info-value" id="downloadQuality">Loading...</span>
+                </div>
+            </div>
+            
+            <div class="download-actions">
+                <button class="download-btn" onclick="downloadFromPublicLink()">
+                    <i class="fas fa-download"></i> Download Now
+                </button>
+                <button class="secondary-btn" onclick="generateNewLink()">
+                    <i class="fas fa-sync-alt"></i> Generate New Link
+                </button>
+            </div>
+            
+            <div class="ad-banner">
+                <div class="ad-container ad-horizontal">
+                    <div class="ad-label">Advertisement</div>
+                    <div class="ad-content">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '478eb9342f285f826b942ea1f9e9db74',
+                                'format' : 'iframe',
+                                'height' : 90,
+                                'width' : 728,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/478eb9342f285f826b942ea1f9e9db74/invoke.js"></script>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DOWNLOAD HISTORY SECTION -->
+    <section id="downloadHistorySection" class="hidden">
+        <div class="container">
+            <div class="section-header">
+                <h2>Download History</h2>
+                <button class="clear-history-btn" onclick="clearDownloadHistory()">
+                    <i class="fas fa-trash-alt"></i> Clear History
+                </button>
+            </div>
+            
+            <div id="historyList" class="history-list">
+                <!-- History items will be loaded here -->
+            </div>
+            
+            <div class="ad-banner">
+                <div class="ad-container ad-horizontal">
+                    <div class="ad-label">Advertisement</div>
+                    <div class="ad-content">
+                        <script type="text/javascript">
+                            atOptions = {
+                                'key' : '478eb9342f285f826b942ea1f9e9db74',
+                                'format' : 'iframe',
+                                'height' : 90,
+                                'width' : 728,
+                                'params' : {}
+                            };
+                        </script>
+                        <script type="text/javascript" src="//www.highperformanceformat.com/478eb9342f285f826b942ea1f9e9db74/invoke.js"></script>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- BOTTOM SHEET MODAL -->
     <div class="bottom-sheet" id="bottomSheet">
         <div class="bottom-sheet-header">
@@ -388,8 +485,8 @@
         </div>
         
         <div class="bottom-sheet-footer">
-            <button class="download-btn" id="downloadBtn" onclick="startDownload()">
-                Download
+            <button class="download-btn" id="downloadBtn" onclick="generatePublicLink()">
+                Generate Download Link
             </button>
         </div>
     </div>

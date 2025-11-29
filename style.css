@@ -470,6 +470,299 @@ header {
     margin: 0 auto;
 }
 
+/* --- PUBLIC LINK SECTION --- */
+#publicLinkSection {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+#publicLinkSection .container {
+    padding: 30px;
+    text-align: center;
+}
+
+#publicLinkSection h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+#publicLinkSection p {
+    color: var(--text-muted);
+    margin-bottom: 30px;
+}
+
+.public-link-container {
+    margin: 30px 0;
+}
+
+.public-link {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.public-link input {
+    flex: 1;
+    padding: 15px 20px;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.public-link button {
+    padding: 15px 25px;
+    background: var(--gradient-primary);
+    border: none;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.public-link button:hover {
+    background: var(--gradient-neon);
+}
+
+.download-info {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 30px 0;
+    text-align: left;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.info-value {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.download-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.download-actions .download-btn {
+    background: var(--gradient-gold);
+    color: #000;
+    padding: 15px 30px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.download-actions .download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(246, 211, 101, 0.4);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 15px 30px;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* --- DOWNLOAD HISTORY SECTION --- */
+#downloadHistorySection {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+#downloadHistorySection .container {
+    padding: 30px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.section-header h2 {
+    font-size: 2rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.clear-history-btn {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.clear-history-btn:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.history-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: 0.3s;
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-2px);
+}
+
+.history-thumbnail {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.history-details {
+    flex: 1;
+}
+
+.history-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--text-main);
+}
+
+.history-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.history-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.history-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.history-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.history-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.history-btn.download {
+    background: var(--gradient-primary);
+    border: none;
+}
+
+.history-btn.download:hover {
+    background: var(--gradient-neon);
+}
+
+.history-btn.delete {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: rgba(244, 67, 54, 0.3);
+    color: #f44336;
+}
+
+.history-btn.delete:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+.empty-history {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-history i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
 /* --- BOTTOM SHEET MODAL --- */
 .bottom-sheet {
     position: fixed;
@@ -1128,6 +1421,17 @@ footer {
     }
 }
 
+/* Hidden class */
+.hidden {
+    display: none !important;
+}
+
+/* Container utility */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
 /* RESPONSIVE */
 @media(max-width: 768px) {
     .hero-title { 
@@ -1181,5 +1485,39 @@ footer {
     
     .bottom-sheet {
         max-height: 90vh;
+    }
+    
+    .public-link {
+        flex-direction: column;
+    }
+    
+    .public-link input {
+        padding: 15px;
+        border-bottom: 1px solid var(--glass-border);
+    }
+    
+    .public-link button {
+        width: 100%;
+        border-radius: 0 0 12px 12px;
+    }
+    
+    .download-actions {
+        flex-direction: column;
+    }
+    
+    .history-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .history-thumbnail {
+        width: 100%;
+        height: 150px;
+    }
+    
+    .history-actions {
+        width: 100%;
+        justify-content: space-between;
     }
 }

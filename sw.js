@@ -37,10 +37,11 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
     .then((response) => {
-      // Cache Hit - return response
+      // Cache hit - return response
       if (response) {
         return response;
       }
+      
       // Clone the request
       const fetchRequest = event.request.clone();
       
@@ -51,15 +52,16 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
           
-          // Clone the response
+          // Don't cache external links automatically (optional)
+          if (event.request.url.startsWith('http') && !event.request.url.includes(self.location.hostname)) {
+            return response;
+          }
+          
           const responseToCache = response.clone();
           
           caches.open(CACHE_NAME)
             .then((cache) => {
-              // Don't cache external API calls if you don't want to
-              if (event.request.url.startsWith('http')) {
-                cache.put(event.request, responseToCache);
-              }
+              cache.put(event.request, responseToCache);
             });
           
           return response;
