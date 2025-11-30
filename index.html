@@ -133,8 +133,6 @@
         <div class="dropdown-menu" id="menu">
             <div class="d-item" onclick="location.reload()">🏠 Home</div>
             <div class="d-item" onclick="showAppLauncher()">📱 App Launcher</div>
-            <div class="d-item" onclick="showBrowser()">🌐 Browser Mode</div>
-            <div class="d-item" onclick="showDirectSearch()">🔍 Direct Search</div>
             <div class="d-item" onclick="location.reload()">📦 Batch Downloader</div>
             <div class="d-item" onclick="showDownloadHistory()">📋 Download History</div>
             <div class="d-item" onclick="togglePrivateMode()">🔒 Private Mode</div>
@@ -290,86 +288,6 @@
             </div>
         </section>
 
-        <!-- BROWSER MODE SECTION -->
-        <section id="browserSection" class="hidden">
-            <div class="container glass-panel">
-                <div class="section-header">
-                    <h2>Browser Mode</h2>
-                    <button class="close-section-btn" onclick="closeBrowser()">×</button>
-                </div>
-                
-                <!-- Browser Header -->
-                <div class="browser-header">
-                    <button class="browser-nav-btn" onclick="browserGoHome()">
-                        <i class="fas fa-home"></i>
-                    </button>
-                    <button class="browser-nav-btn" onclick="browserGoBack()">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <button class="browser-nav-btn" onclick="browserGoForward()">
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                    <button class="browser-nav-btn" onclick="browserRefresh()">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                    
-                    <div class="browser-address-container">
-                        <input type="text" id="browserUrlInput" placeholder="Search or enter URL..." class="browser-url-input">
-                        <button class="browser-go-btn" onclick="loadBrowserUrl()">Go</button>
-                    </div>
-                    
-                    <button class="browser-nav-btn" onclick="extractMediaFromBrowser()">
-                        <i class="fas fa-download"></i>
-                    </button>
-                </div>
-                
-                <div class="browser-iframe-container">
-                    <iframe id="browserIframe" src="" frameborder="0"></iframe>
-                    <div id="browserError" class="browser-error hidden">
-                        <div class="error-content">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h3>Unable to load this website</h3>
-                            <p>Some websites like YouTube block embedding in iframes due to security policies.</p>
-                            <p>Try using our Direct Search feature instead.</p>
-                            <button class="btn-primary" onclick="showDirectSearch()">Try Direct Search</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="browserResults" class="browser-results">
-                    <!-- Extracted media will be shown here -->
-                </div>
-            </div>
-        </section>
-
-        <!-- DIRECT SEARCH SECTION -->
-        <section id="directSearchSection" class="hidden">
-            <div class="container glass-panel">
-                <div class="section-header">
-                    <h2>Direct Search</h2>
-                    <button class="close-section-btn" onclick="closeDirectSearch()">×</button>
-                </div>
-                
-                <div class="direct-search-form">
-                    <input type="text" id="directSearchInput" placeholder="Search for music, video, audio..." class="direct-search-input">
-                    <button class="direct-search-btn" onclick="performDirectSearch()">Search</button>
-                </div>
-                
-                <div class="search-filters">
-                    <button class="filter-btn active" data-platform="all">All Platforms</button>
-                    <button class="filter-btn" data-platform="youtube">YouTube</button>
-                    <button class="filter-btn" data-platform="instagram">Instagram</button>
-                    <button class="filter-btn" data-platform="tiktok">TikTok</button>
-                    <button class="filter-btn" data-platform="facebook">Facebook</button>
-                    <button class="filter-btn" data-platform="twitter">Twitter</button>
-                </div>
-                
-                <div id="directSearchResults" class="direct-search-results">
-                    <!-- Results will be shown here -->
-                </div>
-            </div>
-        </section>
-
         <!-- SEO CONTENT SECTION -->
         <section class="seo-content">
             <h2>Download High-Quality Videos & Music from Any Platform</h2>
@@ -464,7 +382,7 @@
                             'params' : {}
                         };
                     </script>
-                    <script type="text/javascript" src="//www.highperformanceformat.com/478eb926b942ea1f9e9db74/invoke.js"></script>
+                    <script type="text/javascript" src="//www.highperformanceformat.com/478eb9342f285f826b942ea1f9e9db74/invoke.js"></script>
                 </div>
             </div>
         </div>

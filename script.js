@@ -100,17 +100,9 @@ const downloadVideoBtn = document.getElementById('downloadVideoBtn');
 const searchResultsSection = document.getElementById('searchResultsSection');
 const searchResultsContainer = document.getElementById('searchResultsContainer');
 
-// New elements for app launcher, browser mode, and direct search
+// New elements for app launcher
 const appLauncherSection = document.getElementById('appLauncherSection');
-const browserSection = document.getElementById('browserSection');
-const directSearchSection = document.getElementById('directSearchSection');
 const appsGrid = document.getElementById('appsGrid');
-const browserUrlInput = document.getElementById('browserUrlInput');
-const browserIframe = document.getElementById('browserIframe');
-const browserResults = document.getElementById('browserResults');
-const browserError = document.getElementById('browserError');
-const directSearchInput = document.getElementById('directSearchInput');
-const directSearchResults = document.getElementById('directSearchResults');
 
 // --- FUNCTIONS ---
 
@@ -408,8 +400,6 @@ function showVideoDetailsSection() {
     publicLinkSection.classList.add('hidden');
     downloadHistorySection.classList.add('hidden');
     appLauncherSection.classList.add('hidden');
-    browserSection.classList.add('hidden');
-    directSearchSection.classList.add('hidden');
     searchResultsSection.classList.add('hidden');
     
     // Show video details section
@@ -574,8 +564,6 @@ function showSearchResultsSection() {
     publicLinkSection.classList.add('hidden');
     downloadHistorySection.classList.add('hidden');
     appLauncherSection.classList.add('hidden');
-    browserSection.classList.add('hidden');
-    directSearchSection.classList.add('hidden');
     videoDetailsSection.classList.add('hidden');
     
     // Show search results section
@@ -780,8 +768,6 @@ function showPublicLinkSection(downloadData) {
     document.querySelector('.ad-banner').style.display = 'none';
     downloadHistorySection.classList.add('hidden');
     appLauncherSection.classList.add('hidden');
-    browserSection.classList.add('hidden');
-    directSearchSection.classList.add('hidden');
     videoDetailsSection.classList.add('hidden');
     searchResultsSection.classList.add('hidden');
     
@@ -952,8 +938,6 @@ function showDownloadHistory() {
     document.querySelector('.ad-banner').style.display = 'none';
     publicLinkSection.classList.add('hidden');
     appLauncherSection.classList.add('hidden');
-    browserSection.classList.add('hidden');
-    directSearchSection.classList.add('hidden');
     videoDetailsSection.classList.add('hidden');
     searchResultsSection.classList.add('hidden');
     
@@ -1384,8 +1368,6 @@ function showAppLauncher() {
     document.querySelector('.ad-banner').style.display = 'none';
     publicLinkSection.classList.add('hidden');
     downloadHistorySection.classList.add('hidden');
-    browserSection.classList.add('hidden');
-    directSearchSection.classList.add('hidden');
     videoDetailsSection.classList.add('hidden');
     searchResultsSection.classList.add('hidden');
     
@@ -1447,15 +1429,8 @@ function openApp(app) {
         return;
     }
     
-    // For specific apps, open in browser mode
-    if (['YouTube', 'Instagram', 'TikTok', 'Facebook', 'Twitter', 'Telegram', 'SoundCloud', 'Spotify'].includes(app.name)) {
-        showBrowser();
-        browserUrlInput.value = app.url;
-        loadBrowserUrl();
-    } else {
-        // For other apps, open direct search
-        showDirectSearch();
-    }
+    // Open in new tab
+    window.open(app.url, '_blank');
 }
 
 // Show Add Website Modal
@@ -1516,373 +1491,12 @@ function addCustomWebsite() {
     showNotification('Success', 'Website added successfully!');
 }
 
-// Browser Mode Functions with Enhanced Search
-function showBrowser() {
-    // Hide other sections
-    searchSection.style.display = 'none';
-    document.querySelector('.seo-content').style.display = 'none';
-    document.querySelector('.ad-banner').style.display = 'none';
-    publicLinkSection.classList.add('hidden');
-    downloadHistorySection.classList.add('hidden');
-    appLauncherSection.classList.add('hidden');
-    directSearchSection.classList.add('hidden');
-    videoDetailsSection.classList.add('hidden');
-    searchResultsSection.classList.add('hidden');
-    
-    // Show browser section
-    browserSection.classList.remove('hidden');
-    
-    // Close menu
-    menu.classList.remove('show');
-}
-
-function closeBrowser() {
-    browserSection.classList.add('hidden');
-    searchSection.style.display = 'block';
-    document.querySelector('.seo-content').style.display = 'block';
-    document.querySelector('.ad-banner').style.display = 'block';
-}
-
-function loadBrowserUrl() {
-    const url = browserUrlInput.value.trim();
-    if (!url) return;
-    
-    // Check if it's a search query or URL
-    if (isSearchQuery(url)) {
-        // Redirect to Google search
-        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
-        browserIframe.src = searchUrl;
-        browserUrlInput.value = searchUrl;
-    } else {
-        // Load URL in iframe
-        let finalUrl = url;
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            finalUrl = 'https://' + url;
-        }
-        
-        browserIframe.src = finalUrl;
-        browserUrlInput.value = finalUrl;
-    }
-    
-    // Clear previous results and hide error
-    browserResults.innerHTML = '';
-    browserError.classList.add('hidden');
-    
-    // Show loading notification
-    showNotification('Browser', 'Loading website...');
-    
-    // Add to browser history
-    addToBrowserHistory(finalUrl);
-}
-
-// Check if input is a search query
-function isSearchQuery(input) {
-    // Simple check: if it doesn't contain a dot and doesn't start with http, it's likely a search
-    return !input.includes('.') && !input.startsWith('http') && !input.includes(' ');
-}
-
-// Add to browser history
-function addToBrowserHistory(url) {
-    browserHistory.push(url);
-    if (browserHistory.length > 20) {
-        browserHistory.shift();
-    }
-    browserHistoryIndex = browserHistory.length - 1;
-}
-
-// Browser navigation functions
-function browserGoHome() {
-    browserUrlInput.value = 'https://www.google.com';
-    loadBrowserUrl();
-}
-
-function browserGoBack() {
-    if (browserHistoryIndex > 0) {
-        browserHistoryIndex--;
-        browserUrlInput.value = browserHistory[browserHistoryIndex];
-        loadBrowserUrl();
-    }
-}
-
-function browserGoForward() {
-    if (browserHistoryIndex < browserHistory.length - 1) {
-        browserHistoryIndex++;
-        browserUrlInput.value = browserHistory[browserHistoryIndex];
-        loadBrowserUrl();
-    }
-}
-
-function browserRefresh() {
-    browserIframe.src = browserIframe.src;
-    showNotification('Browser', 'Refreshing page...');
-}
-
-// Handle iframe load error
-browserIframe.addEventListener('error', function() {
-    browserError.classList.remove('hidden');
-    showNotification('Error', 'Cannot load this website due to security restrictions');
-});
-
-function extractMediaFromBrowser() {
-    // Simulate media extraction
-    showNotification('Extracting', 'Finding media on this page...');
-    
-    setTimeout(() => {
-        // Mock results
-        const mockResults = [
-            { title: 'Video 1', duration: '3:45', size: '12MB' },
-            { title: 'Video 2', duration: '5:20', size: '18MB' },
-            { title: 'Audio 1', duration: '2:30', size: '4MB' },
-            { title: 'Audio 2', duration: '4:15', size: '7MB' },
-            { title: 'Video 3', duration: '7:10', size: '25MB' },
-            { title: 'Video 4', duration: '2:55', size: '9MB' },
-            { title: 'Audio 3', duration: '3:20', size: '5MB' },
-            { title: 'Video 5', duration: '4:45', size: '15MB' },
-            { title: 'Audio 4', duration: '2:10', size: '3MB' },
-            { title: 'Video 6', duration: '6:30', size: '22MB' }
-        ];
-        
-        // Display results with ad banners
-        browserResults.innerHTML = '';
-        
-        mockResults.forEach((result, index) => {
-            // Add ad banner after every 4 results
-            if (index > 0 && index % 4 === 0) {
-                const adBanner = document.createElement('div');
-                adBanner.className = 'browser-result-item';
-                adBanner.innerHTML = `
-                    <div class="ad-container ad-horizontal">
-                        <div class="ad-label">Advertisement</div>
-                        <div class="ad-content">
-                            <script type="text/javascript">
-                                atOptions = {
-                                    'key' : '478eb9342f285f826b942ea1f9e9db74',
-                                    'format' : 'iframe',
-                                    'height' : 90,
-                                    'width' : 728,
-                                    'params' : {}
-                                };
-                            </script>
-                            <script type="text/javascript" src="//www.highperformanceformat.com/478eb9342f285f826b942ea1f9e9db74/invoke.js"></script>
-                        </div>
-                    </div>
-                `;
-                browserResults.appendChild(adBanner);
-            }
-            
-            const resultItem = document.createElement('div');
-            resultItem.className = 'browser-result-item';
-            resultItem.innerHTML = `
-                <div class="browser-result-thumbnail">
-                    <i class="fas fa-${result.title.includes('Audio') ? 'music' : 'video'}"></i>
-                </div>
-                <div class="browser-result-info">
-                    <div class="browser-result-title">${result.title}</div>
-                    <div class="browser-result-meta">
-                        <span><i class="fas fa-clock"></i> ${result.duration}</span>
-                        <span><i class="fas fa-file"></i> ${result.size}</span>
-                    </div>
-                </div>
-                <div class="browser-result-actions">
-                    <button class="browser-result-btn" onclick="downloadFromBrowser('${result.title}')">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                </div>
-            `;
-            browserResults.appendChild(resultItem);
-        });
-        
-        showNotification('Extraction Complete', `Found ${mockResults.length} media files`);
-    }, 2000);
-}
-
-function downloadFromBrowser(title) {
-    // Simulate download from browser
-    showNotification('Download Started', `Downloading ${title}...`);
-    
-    setTimeout(() => {
-        showNotification('Download Complete', `${title} downloaded successfully!`);
-        
-        // Add to download history
-        const downloadData = {
-            id: generateUniqueId(),
-            url: browserUrlInput.value,
-            title: title,
-            platform: 'Browser',
-            format: 'video',
-            quality: 'high',
-            isShortContent: false,
-            timestamp: new Date().toISOString()
-        };
-        
-        addToDownloadHistory(downloadData);
-    }, 2000);
-}
-
-// Direct Search Functions with Platform Filters
-function showDirectSearch() {
-    // Hide other sections
-    searchSection.style.display = 'none';
-    document.querySelector('.seo-content').style.display = 'none';
-    document.querySelector('.ad-banner').style.display = 'none';
-    publicLinkSection.classList.add('hidden');
-    downloadHistorySection.classList.add('hidden');
-    appLauncherSection.classList.add('hidden');
-    browserSection.classList.add('hidden');
-    videoDetailsSection.classList.add('hidden');
-    searchResultsSection.classList.add('hidden');
-    
-    // Show direct search section
-    directSearchSection.classList.remove('hidden');
-    
-    // Close menu
-    menu.classList.remove('show');
-    
-    // Setup filter buttons
-    setupFilterButtons();
-}
-
-function closeDirectSearch() {
-    directSearchSection.classList.add('hidden');
-    searchSection.style.display = 'block';
-    document.querySelector('.seo-content').style.display = 'block';
-    document.querySelector('.ad-banner').style.display = 'block';
-}
-
-function setupFilterButtons() {
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Remove active class from all buttons
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            
-            // Add active class to clicked button
-            this.classList.add('active');
-            
-            // Store selected platform
-            const selectedPlatform = this.getAttribute('data-platform');
-            localStorage.setItem('selectedSearchPlatform', selectedPlatform);
-        });
-    });
-    
-    // Load saved platform preference
-    const savedPlatform = localStorage.getItem('selectedSearchPlatform') || 'all';
-    const savedButton = document.querySelector(`[data-platform="${savedPlatform}"]`);
-    if (savedButton) {
-        savedButton.classList.add('active');
-    }
-}
-
-async function performDirectSearch() {
-    const query = directSearchInput.value.trim();
-    if (!query) return;
-    
-    const activeFilter = document.querySelector('.filter-btn.active');
-    const platform = activeFilter ? activeFilter.getAttribute('data-platform') : 'all';
-    
-    showNotification('Searching', `Finding: ${query}`);
-    
-    try {
-        // Try to fetch from API with platform filter
-        const searchResults = await searchMediaFromAPIWithPlatform(query, platform);
-        
-        // Display results
-        displayDirectSearchResults(searchResults);
-        
-        showNotification('Search Complete', `Found ${searchResults.length} results`);
-    } catch (error) {
-        showNotification('Error', 'Failed to search. Please try again.');
-        console.error('Error searching media:', error);
-    }
-}
-
-// Search with platform filter
-async function searchMediaFromAPIWithPlatform(query, platform) {
-    // For now, return mock data filtered by platform
-    const allResults = await simulateSearchAPI(query);
-    
-    if (platform === 'all') {
-        return allResults;
-    }
-    
-    return allResults.filter(result => result.platform.toLowerCase() === platform);
-}
-
-function displayDirectSearchResults(results) {
-    // Clear existing results
-    directSearchResults.innerHTML = '';
-    
-    if (results.length === 0) {
-        directSearchResults.innerHTML = `
-            <div class="empty-results">
-                <i class="fas fa-search"></i>
-                <p>No results found</p>
-            </div>
-        `;
-        return;
-    }
-    
-    // Display each result
-    results.forEach(result => {
-        const resultItem = document.createElement('div');
-        resultItem.className = 'direct-search-item';
-        resultItem.innerHTML = `
-            <div class="direct-search-thumbnail">
-                <img src="${result.thumbnail}" alt="${result.title}">
-            </div>
-            <div class="direct-search-info">
-                <div class="direct-search-title">${result.title}</div>
-                <div class="direct-search-meta">
-                    <span><i class="fas fa-globe"></i> ${result.platform}</span>
-                    <span><i class="fas fa-clock"></i> ${result.duration}</span>
-                    <span><i class="fas fa-eye"></i> ${formatViewCount(result.views)}</span>
-                </div>
-            </div>
-            <div class="direct-search-actions">
-                <button class="direct-search-btn" onclick="downloadFromDirectSearch('${result.title}', '${result.platform}')">
-                    <i class="fas fa-download"></i> Download
-                </button>
-            </div>
-        `;
-        directSearchResults.appendChild(resultItem);
-    });
-}
-
-function downloadFromDirectSearch(title, platform) {
-    // Simulate download from direct search
-    showNotification('Download Started', `Downloading ${title}...`);
-    
-    setTimeout(() => {
-        showNotification('Download Complete', `${title} downloaded successfully!`);
-        
-        // Add to download history
-        const downloadData = {
-            id: generateUniqueId(),
-            url: 'https://example.com',
-            title: title,
-            platform: platform,
-            format: 'video',
-            quality: 'high',
-            isShortContent: false,
-            timestamp: new Date().toISOString()
-        };
-        
-        addToDownloadHistory(downloadData);
-    }, 2000);
-}
+// Variable to store current video data
+let currentVideoData = {};
 
 // Enter Key Support
 input.addEventListener('keypress', (e) => { 
     if(e.key === 'Enter') processInput(); 
-});
-
-browserUrlInput.addEventListener('keypress', (e) => { 
-    if(e.key === 'Enter') loadBrowserUrl(); 
-});
-
-directSearchInput.addEventListener('keypress', (e) => { 
-    if(e.key === 'Enter') performDirectSearch(); 
 });
 
 // Close menu on outside click
@@ -1938,6 +1552,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
-
-// Variable to store current video data
-let currentVideoData = {};
