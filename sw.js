@@ -4,28 +4,29 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/style.css',
   '/script.js',
-  '/manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap'
+  '/manifest.json'
 ];
 
 // Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
+    caches.open(CACHE_NAME)
+    .then((cache) => {
+      console.log('Opened cache');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate Event (Cleanup old caches)
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
           }
         })
       );
@@ -35,33 +36,19 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event
 self.addEventListener('fetch', (event) => {
-  // Network first for API calls or external links, Cache first for static assets
-  if (event.request.method !== 'GET') {
+  // Skip cross-origin requests like Google Analytics or external images
+  if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
   
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // Return cached response if found
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      
-      // Otherwise fetch from network
-      return fetch(event.request).then((response) => {
-        // Don't cache valid API responses or non-basic requests
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
-        }
-        
-        // Clone response to put in cache
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        
+    caches.match(event.request)
+    .then((response) => {
+      // Cache hit - return response
+      if (response) {
         return response;
-      });
+      }
+      return fetch(event.request);
     })
   );
 });

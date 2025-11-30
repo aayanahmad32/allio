@@ -222,6 +222,73 @@
             </div>
         </div>
 
+        <!-- VIDEO DETAILS SECTION -->
+        <section id="videoDetailsSection" class="hidden">
+            <div class="container glass-panel">
+                <div class="section-header">
+                    <h2>Video Details</h2>
+                    <button class="close-section-btn" onclick="closeVideoDetails()">×</button>
+                </div>
+                
+                <div class="video-details-container">
+                    <div class="video-thumbnail">
+                        <img id="videoThumbnail" src="" alt="Video Thumbnail">
+                    </div>
+                    
+                    <div class="video-info">
+                        <h3 id="videoTitle">Loading...</h3>
+                        <div class="video-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-user"></i>
+                                <span id="videoChannel">Loading...</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-eye"></i>
+                                <span id="videoViews">Loading...</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-clock"></i>
+                                <span id="videoDuration">Loading...</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-calendar"></i>
+                                <span id="videoUploadDate">Loading...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="video-description" id="videoDescription">
+                            Loading description...
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="download-options">
+                    <h4>Download Options</h4>
+                    <div class="format-options" id="formatOptions">
+                        <!-- Format options will be dynamically added here -->
+                    </div>
+                    
+                    <button class="download-btn" id="downloadVideoBtn" onclick="generatePublicLink()">
+                        Generate Download Link
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEARCH RESULTS SECTION -->
+        <section id="searchResultsSection" class="hidden">
+            <div class="container glass-panel">
+                <div class="section-header">
+                    <h2>Search Results</h2>
+                    <button class="close-section-btn" onclick="closeSearchResults()">×</button>
+                </div>
+                
+                <div class="search-results-container" id="searchResultsContainer">
+                    <!-- Search results will be dynamically added here -->
+                </div>
+            </div>
+        </section>
+
         <!-- APP LAUNCHER SECTION -->
         <section id="appLauncherSection" class="hidden">
             <div class="container glass-panel">
@@ -412,6 +479,10 @@
                 <div class="info-row">
                     <span class="info-label">Quality:</span>
                     <span class="info-value" id="downloadQuality">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Size:</span>
+                    <span class="info-value" id="downloadSize">Loading...</span>
                 </div>
             </div>
             
@@ -820,6 +891,12 @@
                 <button class="popup-btn popup-btn-cancel" onclick="closePageModal()">Close</button>
             </div>
         </div>
+    </div>
+
+    <!-- LOADING SPINNER -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Loading...</p>
     </div>
 
     <!-- JavaScript -->

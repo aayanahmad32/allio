@@ -75,6 +75,21 @@ const publicLinkSection = document.getElementById('publicLinkSection');
 const publicLinkInput = document.getElementById('publicLinkInput');
 const downloadHistorySection = document.getElementById('downloadHistorySection');
 const historyList = document.getElementById('historyList');
+const loadingSpinner = document.getElementById('loadingSpinner');
+
+// New elements for video details and search results
+const videoDetailsSection = document.getElementById('videoDetailsSection');
+const videoThumbnail = document.getElementById('videoThumbnail');
+const videoTitle = document.getElementById('videoTitle');
+const videoChannel = document.getElementById('videoChannel');
+const videoViews = document.getElementById('videoViews');
+const videoDuration = document.getElementById('videoDuration');
+const videoUploadDate = document.getElementById('videoUploadDate');
+const videoDescription = document.getElementById('videoDescription');
+const formatOptions = document.getElementById('formatOptions');
+const downloadVideoBtn = document.getElementById('downloadVideoBtn');
+const searchResultsSection = document.getElementById('searchResultsSection');
+const searchResultsContainer = document.getElementById('searchResultsContainer');
 
 // New elements for app launcher, browser mode, and direct search
 const appLauncherSection = document.getElementById('appLauncherSection');
@@ -123,6 +138,8 @@ async function pasteFromClipboard() {
         const text = await navigator.clipboard.readText();
         input.value = text;
         showNotification('Pasted', 'URL pasted from clipboard');
+        // Automatically process the pasted URL
+        processInput();
     } catch (err) {
         showNotification('Error', 'Could not access clipboard');
     }
@@ -161,29 +178,364 @@ async function processInput() {
     // Load default settings if available
     loadDefaultSettings();
     
-    // Show bottom sheet for long content
-    showBottomSheet();
+    // Fetch video details
+    await fetchVideoDetails(val);
+}
+
+// Fetch Video Details
+async function fetchVideoDetails(url) {
+    showLoadingSpinner(true);
+    
+    try {
+        // Simulate API call to fetch video details
+        // In a real implementation, this would call your backend API
+        const videoData = await simulateVideoDetailsAPI(url);
+        
+        // Update video details section
+        updateVideoDetailsSection(videoData);
+        
+        // Show video details section
+        showVideoDetailsSection();
+        
+        // Update download count
+        const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
+        downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
+        
+        showNotification('Video Details Loaded', 'Video information retrieved successfully');
+    } catch (error) {
+        showNotification('Error', 'Failed to fetch video details. Please try again.');
+        console.error('Error fetching video details:', error);
+    } finally {
+        showLoadingSpinner(false);
+    }
+}
+
+// Simulate Video Details API
+async function simulateVideoDetailsAPI(url) {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Mock video data based on platform
+    const platform = detectPlatform(url);
+    const mockData = {
+        youtube: {
+            title: 'Amazing Nature Documentary - 4K Ultra HD',
+            channel: 'Nature Explorers',
+            views: '1,245,832',
+            duration: '15:42',
+            uploadDate: '2023-10-15',
+            description: 'Explore the breathtaking beauty of nature in this stunning 4K documentary. Witness incredible landscapes and wildlife from around the world.',
+            thumbnail: 'https://picsum.photos/seed/nature-doc/800/450.jpg',
+            formats: [
+                { name: 'MP3 (128kbps)', size: '14.2 MB', format: 'mp3', quality: '128' },
+                { name: 'MP3 (320kbps)', size: '35.5 MB', format: 'mp3', quality: '320' },
+                { name: '360p', size: '45.8 MB', format: 'mp4', quality: '360p' },
+                { name: '720p HD', size: '125.4 MB', format: 'mp4', quality: '720p' },
+                { name: '1080p Full HD', size: '245.7 MB', format: 'mp4', quality: '1080p' },
+                { name: '4K Ultra HD', size: '1.2 GB', format: 'mp4', quality: '2160p' }
+            ]
+        },
+        instagram: {
+            title: 'Beautiful Sunset at the Beach',
+            channel: 'Travel Diary',
+            views: '124,532',
+            duration: '0:30',
+            uploadDate: '2023-10-20',
+            description: 'Captured this amazing sunset during my vacation. The colors were absolutely stunning!',
+            thumbnail: 'https://picsum.photos/seed/sunset-beach/800/450.jpg',
+            formats: [
+                { name: 'MP3 (128kbps)', size: '0.7 MB', format: 'mp3', quality: '128' },
+                { name: '360p', size: '2.1 MB', format: 'mp4', quality: '360p' },
+                { name: '720p HD', size: '5.8 MB', format: 'mp4', quality: '720p' }
+            ]
+        },
+        tiktok: {
+            title: 'Funny Dance Challenge',
+            channel: 'Dance Master',
+            views: '2,845,123',
+            duration: '0:15',
+            uploadDate: '2023-10-22',
+            description: 'Trying out the latest dance trend! Who else wants to join me?',
+            thumbnail: 'https://picsum.photos/seed/dance-challenge/800/450.jpg',
+            formats: [
+                { name: 'MP3 (128kbps)', size: '0.4 MB', format: 'mp3', quality: '128' },
+                { name: '360p (No Watermark)', size: '1.2 MB', format: 'mp4', quality: '360p' },
+                { name: '720p HD (No Watermark)', size: '3.5 MB', format: 'mp4', quality: '720p' }
+            ]
+        },
+        sora: {
+            title: 'AI Generated Fantasy World',
+            channel: 'Sora AI Creations',
+            views: '542,189',
+            duration: '0:45',
+            uploadDate: '2023-10-18',
+            description: 'Generated using OpenAI\'s Sora model. Prompt: "A mystical fantasy world with floating islands and magical creatures"',
+            thumbnail: 'https://picsum.photos/seed/fantasy-world/800/450.jpg',
+            formats: [
+                { name: 'AI Prompt Extract', size: '0.1 MB', format: 'txt', quality: 'prompt' },
+                { name: '360p', size: '3.2 MB', format: 'mp4', quality: '360p' },
+                { name: '720p HD', size: '8.7 MB', format: 'mp4', quality: '720p' },
+                { name: '1080p Full HD', size: '18.5 MB', format: 'mp4', quality: '1080p' },
+                { name: '4K Upscaled', size: '45.2 MB', format: 'mp4', quality: '2160p' }
+            ]
+        }
+    };
+    
+    // Return mock data for the detected platform or default to YouTube
+    return mockData[platform] || mockData.youtube;
+}
+
+// Update Video Details Section
+function updateVideoDetailsSection(videoData) {
+    videoThumbnail.src = videoData.thumbnail;
+    videoTitle.textContent = videoData.title;
+    videoChannel.textContent = videoData.channel;
+    videoViews.textContent = formatViewCount(videoData.views);
+    videoDuration.textContent = videoData.duration;
+    videoUploadDate.textContent = formatDate(videoData.uploadDate);
+    videoDescription.textContent = videoData.description;
+    
+    // Clear existing format options
+    formatOptions.innerHTML = '';
+    
+    // Add format options
+    videoData.formats.forEach((format, index) => {
+        const formatOption = document.createElement('div');
+        formatOption.className = 'format-option';
+        formatOption.onclick = () => selectFormat(formatOption, format);
+        
+        formatOption.innerHTML = `
+            <div class="format-info">
+                <span class="format-name">${format.name}</span>
+                <span class="format-size">${format.size}</span>
+            </div>
+            <div class="format-radio">
+                <input type="radio" name="video-format" value="${format.format}" ${index === 0 ? 'checked' : ''}>
+            </div>
+        `;
+        
+        formatOptions.appendChild(formatOption);
+    });
+    
+    // Store video data for download
+    currentVideoData = videoData;
+}
+
+// Select Format
+function selectFormat(element, format) {
+    // Remove selected class from all options
+    document.querySelectorAll('.format-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked option
+    element.classList.add('selected');
+    
+    // Update selected format
+    selectedFormat = format.format;
+    selectedQuality = format.quality;
+    
+    // Enable download button
+    downloadVideoBtn.disabled = false;
+}
+
+// Show Video Details Section
+function showVideoDetailsSection() {
+    // Hide other sections
+    searchSection.style.display = 'none';
+    document.querySelector('.seo-content').style.display = 'none';
+    document.querySelector('.ad-banner').style.display = 'none';
+    publicLinkSection.classList.add('hidden');
+    downloadHistorySection.classList.add('hidden');
+    appLauncherSection.classList.add('hidden');
+    browserSection.classList.add('hidden');
+    directSearchSection.classList.add('hidden');
+    searchResultsSection.classList.add('hidden');
+    
+    // Show video details section
+    videoDetailsSection.classList.remove('hidden');
+}
+
+// Close Video Details Section
+function closeVideoDetails() {
+    videoDetailsSection.classList.add('hidden');
+    searchSection.style.display = 'block';
+    document.querySelector('.seo-content').style.display = 'block';
+    document.querySelector('.ad-banner').style.display = 'block';
 }
 
 // Search Media Function
 async function searchMedia(query) {
-    showNotification('Searching', `Finding: ${query}`);
+    showLoadingSpinner(true);
     
-    // Simulate search
+    try {
+        // Simulate API call to search for media
+        const searchResults = await simulateSearchAPI(query);
+        
+        // Update search results section
+        updateSearchResultsSection(searchResults, query);
+        
+        // Show search results section
+        showSearchResultsSection();
+        
+        showNotification('Search Complete', `Found ${searchResults.length} results for "${query}"`);
+    } catch (error) {
+        showNotification('Error', 'Failed to search. Please try again.');
+        console.error('Error searching media:', error);
+    } finally {
+        showLoadingSpinner(false);
+    }
+}
+
+// Simulate Search API
+async function simulateSearchAPI(query) {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Mock search results
+    return [
+        {
+            title: `${query} - Official Music Video`,
+            channel: 'Music Channel',
+            views: '12,456,789',
+            duration: '3:45',
+            thumbnail: 'https://picsum.photos/seed/music1/300/180.jpg',
+            platform: 'YouTube'
+        },
+        {
+            title: `${query} - Cover Version`,
+            channel: 'Cover Artist',
+            views: '3,456,123',
+            duration: '4:20',
+            thumbnail: 'https://picsum.photos/seed/music2/300/180.jpg',
+            platform: 'YouTube'
+        },
+        {
+            title: `${query} - Live Performance`,
+            channel: 'Live Concerts',
+            views: '8,765,432',
+            duration: '5:15',
+            thumbnail: 'https://picsum.photos/seed/music3/300/180.jpg',
+            platform: 'YouTube'
+        },
+        {
+            title: `${query} - Dance Cover`,
+            channel: 'Dance Studio',
+            views: '5,432,109',
+            duration: '2:30',
+            thumbnail: 'https://picsum.photos/seed/dance1/300/180.jpg',
+            platform: 'TikTok'
+        },
+        {
+            title: `${query} - Remix`,
+            channel: 'DJ Producer',
+            views: '2,345,678',
+            duration: '3:15',
+            thumbnail: 'https://picsum.photos/seed/remix1/300/180.jpg',
+            platform: 'SoundCloud'
+        },
+        {
+            title: `${query} - Acoustic Version`,
+            channel: 'Acoustic Sessions',
+            views: '1,234,567',
+            duration: '4:00',
+            thumbnail: 'https://picsum.photos/seed/acoustic1/300/180.jpg',
+            platform: 'Spotify'
+        }
+    ];
+}
+
+// Update Search Results Section
+function updateSearchResultsSection(searchResults, query) {
+    // Clear existing results
+    searchResultsContainer.innerHTML = '';
+    
+    // Add search results
+    searchResults.forEach(result => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'search-result-item';
+        
+        resultItem.innerHTML = `
+            <div class="search-result-thumbnail">
+                <img src="${result.thumbnail}" alt="${result.title}">
+            </div>
+            <div class="search-result-info">
+                <div class="search-result-title">${result.title}</div>
+                <div class="search-result-meta">
+                    <span><i class="fas fa-user"></i> ${result.channel}</span>
+                    <span><i class="fas fa-eye"></i> ${formatViewCount(result.views)}</span>
+                    <span><i class="fas fa-clock"></i> ${result.duration}</span>
+                    <span><i class="fas fa-globe"></i> ${result.platform}</span>
+                </div>
+            </div>
+            <div class="search-result-actions">
+                <button class="search-result-btn" onclick="downloadFromSearchResult('${result.title}', '${result.platform}')">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+        `;
+        
+        searchResultsContainer.appendChild(resultItem);
+    });
+}
+
+// Show Search Results Section
+function showSearchResultsSection() {
+    // Hide other sections
+    searchSection.style.display = 'none';
+    document.querySelector('.seo-content').style.display = 'none';
+    document.querySelector('.ad-banner').style.display = 'none';
+    publicLinkSection.classList.add('hidden');
+    downloadHistorySection.classList.add('hidden');
+    appLauncherSection.classList.add('hidden');
+    browserSection.classList.add('hidden');
+    directSearchSection.classList.add('hidden');
+    videoDetailsSection.classList.add('hidden');
+    
+    // Show search results section
+    searchResultsSection.classList.remove('hidden');
+}
+
+// Close Search Results Section
+function closeSearchResults() {
+    searchResultsSection.classList.add('hidden');
+    searchSection.style.display = 'block';
+    document.querySelector('.seo-content').style.display = 'block';
+    document.querySelector('.ad-banner').style.display = 'block';
+}
+
+// Download from Search Result
+function downloadFromSearchResult(title, platform) {
+    // In a real implementation, this would fetch the actual URL and details
+    // For now, we'll simulate it
+    showNotification('Processing', `Preparing download for "${title}"...`);
+    
     setTimeout(() => {
-        // Mock results
-        const mockResults = [
-            { title: `${query} - Official Video`, platform: 'YouTube' },
-            { title: `${query} - Audio Version`, platform: 'Spotify' },
-            { title: `${query} - TikTok Remix`, platform: 'TikTok' }
-        ];
+        // Simulate getting video details
+        const mockVideoData = {
+            title: title,
+            channel: `${platform} Channel`,
+            views: '1,000,000',
+            duration: '3:45',
+            uploadDate: '2023-10-20',
+            description: `This is a great ${platform} video that you'll love!`,
+            thumbnail: 'https://picsum.photos/seed/download/800/450.jpg',
+            formats: [
+                { name: 'MP3 (128kbps)', size: '3.2 MB', format: 'mp3', quality: '128' },
+                { name: 'MP3 (320kbps)', size: '8.1 MB', format: 'mp3', quality: '320' },
+                { name: '360p', size: '12.5 MB', format: 'mp4', quality: '360p' },
+                { name: '720p HD', size: '35.4 MB', format: 'mp4', quality: '720p' },
+                { name: '1080p Full HD', size: '68.7 MB', format: 'mp4', quality: '1080p' }
+            ]
+        };
         
-        // Show search results (you can implement a modal for this)
-        showNotification('Search Complete', `Found ${mockResults.length} results`);
+        // Update video details section
+        updateVideoDetailsSection(mockVideoData);
         
-        // Auto-select first result and proceed
-        input.value = 'https://youtube.com/watch?v=example';
-        processInput();
+        // Show video details section
+        showVideoDetailsSection();
+        
+        showNotification('Ready to Download', 'Select your preferred format and quality');
     }, 1500);
 }
 
@@ -311,14 +663,14 @@ function generatePublicLink() {
         return;
     }
     
-    // Close bottom sheet
-    closeBottomSheet();
+    // Close video details section
+    closeVideoDetails();
     
     // Create a unique ID for this download
     publicLinkId = generateUniqueId();
     
     // Generate title based on platform
-    currentTitle = `${currentPlatform.charAt(0).toUpperCase() + currentPlatform.slice(1)} Video`;
+    currentTitle = currentVideoData.title;
     
     // Create download data
     const downloadData = {
@@ -360,6 +712,8 @@ function showPublicLinkSection(downloadData) {
     appLauncherSection.classList.add('hidden');
     browserSection.classList.add('hidden');
     directSearchSection.classList.add('hidden');
+    videoDetailsSection.classList.add('hidden');
+    searchResultsSection.classList.add('hidden');
     
     // Show public link section
     publicLinkSection.classList.remove('hidden');
@@ -373,6 +727,32 @@ function showPublicLinkSection(downloadData) {
     document.getElementById('downloadPlatform').textContent = downloadData.platform.charAt(0).toUpperCase() + downloadData.platform.slice(1);
     document.getElementById('downloadFormat').textContent = downloadData.format.charAt(0).toUpperCase() + downloadData.format.slice(1);
     document.getElementById('downloadQuality').textContent = downloadData.quality.charAt(0).toUpperCase() + downloadData.quality.slice(1);
+    
+    // Calculate and display file size
+    const fileSize = calculateFileSize(downloadData.format, downloadData.quality);
+    document.getElementById('downloadSize').textContent = fileSize;
+}
+
+// Calculate file size based on format and quality
+function calculateFileSize(format, quality) {
+    // Mock file size calculation based on format and quality
+    const sizeMap = {
+        'mp3': {
+            '128': '3.2 MB',
+            '320': '8.1 MB'
+        },
+        'mp4': {
+            '360p': '12.5 MB',
+            '720p': '35.4 MB',
+            '1080p': '68.7 MB',
+            '2160p': '245.8 MB'
+        },
+        'txt': {
+            'prompt': '0.1 MB'
+        }
+    };
+    
+    return sizeMap[format]?.[quality] || 'Unknown size';
 }
 
 // Copy public link
@@ -487,6 +867,8 @@ function showDownloadHistory() {
     appLauncherSection.classList.add('hidden');
     browserSection.classList.add('hidden');
     directSearchSection.classList.add('hidden');
+    videoDetailsSection.classList.add('hidden');
+    searchResultsSection.classList.add('hidden');
     
     // Show download history section
     downloadHistorySection.classList.remove('hidden');
@@ -699,6 +1081,36 @@ function showNotification(title, message) {
     setTimeout(() => {
         notification.classList.remove('show');
     }, 3000);
+}
+
+// Show/Hide Loading Spinner
+function showLoadingSpinner(show) {
+    if (show) {
+        loadingSpinner.classList.add('show');
+    } else {
+        loadingSpinner.classList.remove('show');
+    }
+}
+
+// Format view count
+function formatViewCount(views) {
+    const num = parseInt(views.replace(/,/g, ''));
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return views;
+}
+
+// Format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
 }
 
 // Open Settings Modal
@@ -1043,6 +1455,8 @@ function showAppLauncher() {
     downloadHistorySection.classList.add('hidden');
     browserSection.classList.add('hidden');
     directSearchSection.classList.add('hidden');
+    videoDetailsSection.classList.add('hidden');
+    searchResultsSection.classList.add('hidden');
     
     // Show app launcher section
     appLauncherSection.classList.remove('hidden');
@@ -1107,6 +1521,8 @@ function showBrowser() {
     downloadHistorySection.classList.add('hidden');
     appLauncherSection.classList.add('hidden');
     directSearchSection.classList.add('hidden');
+    videoDetailsSection.classList.add('hidden');
+    searchResultsSection.classList.add('hidden');
     
     // Show browser section
     browserSection.classList.remove('hidden');
@@ -1247,6 +1663,8 @@ function showDirectSearch() {
     downloadHistorySection.classList.add('hidden');
     appLauncherSection.classList.add('hidden');
     browserSection.classList.add('hidden');
+    videoDetailsSection.classList.add('hidden');
+    searchResultsSection.classList.add('hidden');
     
     // Show direct search section
     directSearchSection.classList.remove('hidden');
@@ -1394,9 +1812,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Logo and favicon prompts
-console.log("=== LOGO PROMPT ===");
-console.log("Create a modern, sleek logo for 'ALLIO PRO', a global media downloader. The logo should feature a lightning bolt icon integrated with a download arrow. Use a gradient of purple and blue colors. The design should be minimalist and suitable for both dark and light backgrounds. The logo should be in vector format and scalable.");
-
-console.log("=== FAVICON PROMPT ===");
-console.log("Design a 16x16 and 32x32 pixel favicon for 'ALLIO PRO'. The favicon should be a simplified version of the logo, featuring a lightning bolt. Use the same purple and blue gradient. The design must be clear and recognizable even at small sizes.");
+// Variable to store current video data
+let currentVideoData = {};
