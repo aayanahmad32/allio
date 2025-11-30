@@ -27,7 +27,7 @@ let platformSettings = {
     sora: { format: 'sora', quality: 'high' }
 };
 
-// App Launcher Data
+// App Launcher Data with proper icons
 const appLauncherApps = [
     { name: 'YouTube', icon: 'fab fa-youtube', color: '#FF0000', url: 'https://youtube.com' },
     { name: 'Instagram', icon: 'fab fa-instagram', color: '#E1306C', url: 'https://instagram.com' },
@@ -54,6 +54,9 @@ const appLauncherApps = [
     { name: 'Win Cash', icon: 'fas fa-coins', color: '#2ECC71', url: '#' },
     { name: 'Status Saver', icon: 'fas fa-save', color: '#9B59B6', url: '#' }
 ];
+
+// Custom websites storage
+let customWebsites = JSON.parse(localStorage.getItem('customWebsites') || '[]');
 
 // --- DOM ELEMENTS ---
 const input = document.getElementById('inputUrl');
@@ -188,7 +191,6 @@ async function fetchVideoDetails(url) {
     
     try {
         // Simulate API call to fetch video details
-        // In a real implementation, this would call your backend API
         const videoData = await simulateVideoDetailsAPI(url);
         
         // Update video details section
@@ -1478,7 +1480,10 @@ function closeAppLauncher() {
 function loadAppLauncherApps() {
     appsGrid.innerHTML = '';
     
-    appLauncherApps.forEach(app => {
+    // Combine default apps with custom websites
+    const allApps = [...appLauncherApps, ...customWebsites];
+    
+    allApps.forEach(app => {
         const appItem = document.createElement('div');
         appItem.className = 'app-item';
         appItem.onclick = () => openApp(app);
@@ -1509,6 +1514,64 @@ function openApp(app) {
         // For other apps, open direct search
         showDirectSearch();
     }
+}
+
+// Show Add Website Modal
+function showAddWebsiteModal() {
+    document.getElementById('addWebsiteModal').classList.add('show');
+}
+
+// Close Add Website Modal
+function closeAddWebsiteModal() {
+    document.getElementById('addWebsiteModal').classList.remove('show');
+}
+
+// Add Custom Website
+function addCustomWebsite() {
+    const name = document.getElementById('websiteName').value.trim();
+    const url = document.getElementById('websiteUrl').value.trim();
+    const icon = document.getElementById('websiteIcon').value.trim() || 'fas fa-globe';
+    const color = document.getElementById('websiteColor').value;
+    
+    if (!name || !url) {
+        showNotification('Error', 'Please enter website name and URL');
+        return;
+    }
+    
+    // Add https:// if not present
+    let finalUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        finalUrl = 'https://' + url;
+    }
+    
+    // Create new website object
+    const newWebsite = {
+        name: name,
+        url: finalUrl,
+        icon: icon,
+        color: color,
+        isCustom: true
+    };
+    
+    // Add to custom websites array
+    customWebsites.push(newWebsite);
+    
+    // Save to localStorage
+    localStorage.setItem('customWebsites', JSON.stringify(customWebsites));
+    
+    // Reload app launcher
+    loadAppLauncherApps();
+    
+    // Close modal
+    closeAddWebsiteModal();
+    
+    // Clear form
+    document.getElementById('websiteName').value = '';
+    document.getElementById('websiteUrl').value = '';
+    document.getElementById('websiteIcon').value = '';
+    document.getElementById('websiteColor').value = '#667eea';
+    
+    showNotification('Success', 'Website added successfully!');
 }
 
 // Browser Mode Functions
@@ -1705,7 +1768,7 @@ function performDirectSearch() {
         // Display results
         directSearchResults.innerHTML = '';
         
-        mockResults.forEach((result, index) => {
+        mockResults.forEach(result => {
             const resultItem = document.createElement('div');
             resultItem.className = 'direct-search-item';
             resultItem.innerHTML = `

@@ -296,6 +296,14 @@
                     <h2>App Launcher</h2>
                     <button class="close-section-btn" onclick="closeAppLauncher()">×</button>
                 </div>
+                
+                <!-- Add Custom Website Button -->
+                <div class="add-website-container">
+                    <button class="add-website-btn" onclick="showAddWebsiteModal()">
+                        <i class="fas fa-plus"></i> Add Custom Website
+                    </button>
+                </div>
+                
                 <div class="apps-grid" id="appsGrid">
                     <!-- Apps will be dynamically added here -->
                 </div>
@@ -889,6 +897,43 @@
             
             <div class="popup-actions">
                 <button class="popup-btn popup-btn-cancel" onclick="closePageModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD WEBSITE MODAL -->
+    <div class="popup-overlay" id="addWebsiteModal">
+        <div class="popup">
+            <div class="popup-header">
+                <div class="popup-title">Add Custom Website</div>
+                <button class="popup-close" onclick="closeAddWebsiteModal()">×</button>
+            </div>
+            
+            <div class="popup-content">
+                <div class="form-group">
+                    <label for="websiteName">Website Name</label>
+                    <input type="text" id="websiteName" class="form-input" placeholder="e.g. My Website">
+                </div>
+                
+                <div class="form-group">
+                    <label for="websiteUrl">Website URL</label>
+                    <input type="text" id="websiteUrl" class="form-input" placeholder="e.g. https://example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="websiteIcon">Icon (Optional)</label>
+                    <input type="text" id="websiteIcon" class="form-input" placeholder="Font Awesome class (e.g. fas fa-globe)">
+                </div>
+                
+                <div class="form-group">
+                    <label for="websiteColor">Color</label>
+                    <input type="color" id="websiteColor" class="form-input" value="#667eea">
+                </div>
+            </div>
+            
+            <div class="popup-actions">
+                <button class="popup-btn popup-btn-cancel" onclick="closeAddWebsiteModal()">Cancel</button>
+                <button class="popup-btn popup-btn-download" onclick="addCustomWebsite()">Add Website</button>
             </div>
         </div>
     </div>
