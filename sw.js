@@ -12,7 +12,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
     .then((cache) => {
-      console.log('Opened cache');
+      console.log('Service Worker: Caching Files');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -25,7 +25,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            console.log('Service Worker: Clearing Old Cache');
             return caches.delete(cacheName);
           }
         })
@@ -36,7 +36,7 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests like Google Analytics or external images
+  // Skip cross-origin requests (like Google Analytics, external images, etc.)
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }

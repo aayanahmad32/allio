@@ -137,6 +137,11 @@ header {
     filter: drop-shadow(0 0 8px rgba(102, 126, 234, 0.7));
 }
 
+.brand img {
+    border-radius: 50%;
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+}
+
 .header-actions {
     display: flex; 
     align-items: center; 
@@ -470,6 +475,20 @@ header {
     margin-bottom: 10px;
     background: var(--gradient-primary);
     color: white;
+    overflow: hidden;
+    position: relative;
+}
+
+.app-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+}
+
+.app-icon i {
+    font-size: 1.8rem;
+    color: white;
 }
 
 .app-name {
@@ -633,6 +652,12 @@ header {
     font-size: 2.5rem;
 }
 
+.search-result-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .search-result-info {
     padding: 20px;
 }
@@ -680,42 +705,65 @@ header {
     padding: 0 20px;
 }
 
-.browser-controls {
+.browser-header {
     display: flex;
+    align-items: center;
     gap: 10px;
     margin-bottom: 20px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.browser-nav-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.browser-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.browser-address-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .browser-url-input {
     flex: 1;
-    padding: 12px 20px;
-    border-radius: 12px;
-    border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 15px;
+    border: none;
+    background: transparent;
     color: white;
-    font-size: 1rem;
+    font-size: 0.9rem;
     outline: none;
 }
 
-.browser-go-btn, .browser-extract-btn {
-    padding: 0 20px;
-    border-radius: 12px;
-    border: none;
+.browser-go-btn {
     background: var(--gradient-primary);
+    border: none;
     color: white;
+    padding: 10px 20px;
     font-weight: 600;
     cursor: pointer;
     transition: 0.3s;
 }
 
-.browser-extract-btn {
-    background: var(--gradient-gold);
-    color: #000;
-}
-
-.browser-go-btn:hover, .browser-extract-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+.browser-go-btn:hover {
+    background: var(--gradient-neon);
 }
 
 .browser-iframe-container {
@@ -725,12 +773,48 @@ header {
     overflow: hidden;
     border: 1px solid var(--glass-border);
     margin-bottom: 20px;
+    position: relative;
 }
 
 .browser-iframe-container iframe {
     width: 100%;
     height: 100%;
     background: white;
+}
+
+.browser-error {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+}
+
+.error-content {
+    text-align: center;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.error-content i {
+    font-size: 3rem;
+    color: #f5576c;
+    margin-bottom: 15px;
+}
+
+.error-content h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.error-content p {
+    color: var(--text-muted);
+    margin-bottom: 10px;
 }
 
 .browser-results {
@@ -842,6 +926,35 @@ header {
     box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
+.search-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.filter-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.filter-btn.active {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
 .direct-search-results {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -870,6 +983,12 @@ header {
     justify-content: center;
     color: white;
     font-size: 2.5rem;
+}
+
+.direct-search-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .direct-search-info {
@@ -970,23 +1089,6 @@ header {
 .feature-desc {
     font-size: 0.9rem; 
     color: var(--text-muted);
-}
-
-/* Sora 2 Feature Card */
-.feature-card.sora {
-    border-color: rgba(255, 0, 128, 0.3);
-    background: rgba(255, 0, 128, 0.05);
-}
-
-.feature-card.sora:hover {
-    border-color: rgba(255, 0, 128, 0.7);
-    box-shadow: 0 10px 30px rgba(255, 0, 128, 0.2);
-}
-
-.feature-card.sora .feature-icon {
-    background: var(--gradient-sora); 
-    -webkit-background-clip: text; 
-    -webkit-text-fill-color: transparent;
 }
 
 /* --- ADS BANNERS --- */
@@ -1282,23 +1384,6 @@ header {
 
 .history-btn.delete:hover {
     background: rgba(244, 67, 54, 0.3);
-}
-
-.history-ad-banner {
-    grid-column: 1 / -1;
-    margin: 20px 0;
-}
-
-.empty-history {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-muted);
-}
-
-.empty-history i {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    opacity: 0.5;
 }
 
 /* --- BOTTOM SHEET MODAL --- */
@@ -2050,6 +2135,23 @@ footer {
     margin: 0 auto;
 }
 
+/* Button primary style */
+.btn-primary {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
 /* RESPONSIVE */
 @media(max-width: 768px) {
     .hero-title { 
@@ -2143,8 +2245,14 @@ footer {
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
     
-    .browser-controls {
-        flex-direction: column;
+    .browser-header {
+        flex-wrap: wrap;
+    }
+    
+    .browser-address-container {
+        order: 3;
+        flex-basis: 100%;
+        margin-top: 10px;
     }
     
     .browser-iframe-container {

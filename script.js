@@ -27,7 +27,14 @@ let platformSettings = {
     sora: { format: 'sora', quality: 'high' }
 };
 
-// App Launcher Data with proper icons
+// API Configuration
+const API_CONFIG = {
+    RAPIDAPI_KEY: 'YOUR_RAPIDAPI_KEY', // Replace with your actual RapidAPI key
+    YOUTUBE_API_KEY: 'YOUR_YOUTUBE_API_KEY', // Replace with your actual YouTube API key
+    BASE_URL: 'https://allio-delta.vercel.app'
+};
+
+// App Launcher Data with proper favicon support
 const appLauncherApps = [
     { name: 'YouTube', icon: 'fab fa-youtube', color: '#FF0000', url: 'https://youtube.com' },
     { name: 'Instagram', icon: 'fab fa-instagram', color: '#E1306C', url: 'https://instagram.com' },
@@ -38,7 +45,6 @@ const appLauncherApps = [
     { name: 'Terabox', icon: 'fas fa-cloud', color: '#00D4AA', url: 'https://terabox.com' },
     { name: 'StreamNet', icon: 'fas fa-network-wired', color: '#6A5ACD', url: 'https://streamnet.com' },
     { name: 'DiskWala', icon: 'fas fa-hdd', color: '#FF8C00', url: 'https://diskwala.com' },
-    { name: 'Sora 2 AI', icon: 'fas fa-brain', color: '#FF00FF', url: 'https://openai.com/sora' },
     { name: 'SoundCloud', icon: 'fab fa-soundcloud', color: '#FF3300', url: 'https://soundcloud.com' },
     { name: 'Spotify', icon: 'fab fa-spotify', color: '#1DB954', url: 'https://spotify.com' },
     { name: 'Vimeo', icon: 'fab fa-vimeo', color: '#1AB7EA', url: 'https://vimeo.com' },
@@ -102,6 +108,7 @@ const appsGrid = document.getElementById('appsGrid');
 const browserUrlInput = document.getElementById('browserUrlInput');
 const browserIframe = document.getElementById('browserIframe');
 const browserResults = document.getElementById('browserResults');
+const browserError = document.getElementById('browserError');
 const directSearchInput = document.getElementById('directSearchInput');
 const directSearchResults = document.getElementById('directSearchResults');
 
@@ -148,7 +155,7 @@ async function pasteFromClipboard() {
     }
 }
 
-// Enhanced Search Function
+// Enhanced Search Function with API Integration
 async function processInput() {
     const val = input.value.trim();
     if(!val) return;
@@ -157,16 +164,13 @@ async function processInput() {
     const isUrl = /^https?:\/\/.+/i.test(val);
     
     if (!isUrl) {
-        // Search for song/video
+        // Search for song/video using API
         await searchMedia(val);
         return;
     }
 
     // Check if it's a short content (reels, shorts, etc.)
     isShortContent = checkIfShortContent(val);
-    
-    // Check if it's a Sora 2 AI content
-    const isSoraContent = checkIfSoraContent(val);
     
     // Check platform type
     currentPlatform = detectPlatform(val);
@@ -181,17 +185,17 @@ async function processInput() {
     // Load default settings if available
     loadDefaultSettings();
     
-    // Fetch video details
+    // Fetch video details using API
     await fetchVideoDetails(val);
 }
 
-// Fetch Video Details
+// Fetch Video Details with API Integration
 async function fetchVideoDetails(url) {
     showLoadingSpinner(true);
     
     try {
-        // Simulate API call to fetch video details
-        const videoData = await simulateVideoDetailsAPI(url);
+        // Try to fetch from API first
+        const videoData = await fetchVideoFromAPI(url);
         
         // Update video details section
         updateVideoDetailsSection(videoData);
@@ -212,7 +216,77 @@ async function fetchVideoDetails(url) {
     }
 }
 
-// Simulate Video Details API
+// Fetch video from API
+async function fetchVideoFromAPI(url) {
+    const platform = detectPlatform(url);
+    
+    // For YouTube videos, use YouTube API
+    if (platform === 'youtube') {
+        const videoId = extractYouTubeVideoId(url);
+        if (videoId) {
+            return await fetchYouTubeVideoDetails(videoId);
+        }
+    }
+    
+    // For other platforms, use RapidAPI or fallback to mock data
+    return await simulateVideoDetailsAPI(url);
+}
+
+// Extract YouTube video ID from URL
+function extractYouTubeVideoId(url) {
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7].length === 11) ? match[7] : false;
+}
+
+// Fetch YouTube video details using API
+async function fetchYouTubeVideoDetails(videoId) {
+    try {
+        const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${API_CONFIG.YOUTUBE_API_KEY}`);
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            const item = data.items[0];
+            return {
+                title: item.snippet.title,
+                channel: item.snippet.channelTitle,
+                views: item.statistics.viewCount,
+                duration: formatDuration(item.contentDetails.duration),
+                uploadDate: item.snippet.publishedAt,
+                description: item.snippet.description,
+                thumbnail: item.snippet.thumbnails.high.url,
+                formats: [
+                    { name: 'MP3 (128kbps)', size: '3.2 MB', format: 'mp3', quality: '128' },
+                    { name: 'MP3 (320kbps)', size: '8.1 MB', format: 'mp3', quality: '320' },
+                    { name: '360p', size: '12.5 MB', format: 'mp4', quality: '360p' },
+                    { name: '720p HD', size: '35.4 MB', format: 'mp4', quality: '720p' },
+                    { name: '1080p Full HD', size: '68.7 MB', format: 'mp4', quality: '1080p' },
+                    { name: '4K Ultra HD', size: '245.8 MB', format: 'mp4', quality: '2160p' }
+                ]
+            };
+        }
+    } catch (error) {
+        console.error('YouTube API error:', error);
+    }
+    
+    // Fallback to mock data
+    return await simulateVideoDetailsAPI(url);
+}
+
+// Format YouTube duration
+function formatDuration(duration) {
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    const hours = parseInt(match[1]) || 0;
+    const minutes = parseInt(match[2]) || 0;
+    const seconds = parseInt(match[3]) || 0;
+    
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Simulate Video Details API (Fallback)
 async function simulateVideoDetailsAPI(url) {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -263,22 +337,6 @@ async function simulateVideoDetailsAPI(url) {
                 { name: 'MP3 (128kbps)', size: '0.4 MB', format: 'mp3', quality: '128' },
                 { name: '360p (No Watermark)', size: '1.2 MB', format: 'mp4', quality: '360p' },
                 { name: '720p HD (No Watermark)', size: '3.5 MB', format: 'mp4', quality: '720p' }
-            ]
-        },
-        sora: {
-            title: 'AI Generated Fantasy World',
-            channel: 'Sora AI Creations',
-            views: '542,189',
-            duration: '0:45',
-            uploadDate: '2023-10-18',
-            description: 'Generated using OpenAI\'s Sora model. Prompt: "A mystical fantasy world with floating islands and magical creatures"',
-            thumbnail: 'https://picsum.photos/seed/fantasy-world/800/450.jpg',
-            formats: [
-                { name: 'AI Prompt Extract', size: '0.1 MB', format: 'txt', quality: 'prompt' },
-                { name: '360p', size: '3.2 MB', format: 'mp4', quality: '360p' },
-                { name: '720p HD', size: '8.7 MB', format: 'mp4', quality: '720p' },
-                { name: '1080p Full HD', size: '18.5 MB', format: 'mp4', quality: '1080p' },
-                { name: '4K Upscaled', size: '45.2 MB', format: 'mp4', quality: '2160p' }
             ]
         }
     };
@@ -366,13 +424,13 @@ function closeVideoDetails() {
     document.querySelector('.ad-banner').style.display = 'block';
 }
 
-// Search Media Function
+// Search Media Function with API Integration
 async function searchMedia(query) {
     showLoadingSpinner(true);
     
     try {
-        // Simulate API call to search for media
-        const searchResults = await simulateSearchAPI(query);
+        // Try to fetch from API first
+        const searchResults = await searchMediaFromAPI(query);
         
         // Update search results section
         updateSearchResultsSection(searchResults, query);
@@ -389,7 +447,33 @@ async function searchMedia(query) {
     }
 }
 
-// Simulate Search API
+// Search media from API
+async function searchMediaFromAPI(query) {
+    try {
+        // For YouTube search, use YouTube API
+        const response = await fetch(`https://www.googleapis.com/youtube/v3/search?q=${encodeURIComponent(query)}&part=snippet&type=video&maxResults=10&key=${API_CONFIG.YOUTUBE_API_KEY}`);
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            return data.items.map(item => ({
+                title: item.snippet.title,
+                channel: item.snippet.channelTitle,
+                views: 'N/A',
+                duration: 'N/A',
+                thumbnail: item.snippet.thumbnails.medium.url,
+                platform: 'YouTube',
+                videoId: item.id.videoId
+            }));
+        }
+    } catch (error) {
+        console.error('Search API error:', error);
+    }
+    
+    // Fallback to mock data
+    return await simulateSearchAPI(query);
+}
+
+// Simulate Search API (Fallback)
 async function simulateSearchAPI(query) {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -397,52 +481,52 @@ async function simulateSearchAPI(query) {
     // Mock search results
     return [
         {
-            title: `${query} - Official Music Video`,
+            title: `${query} - Official Video`,
             channel: 'Music Channel',
             views: '12,456,789',
             duration: '3:45',
-            thumbnail: 'https://picsum.photos/seed/music1/300/180.jpg',
+            thumbnail: `https://picsum.photos/seed/${query}-1/300/180.jpg`,
+            platform: 'YouTube'
+        },
+        {
+            title: `${query} - Audio Version`,
+            channel: 'Audio Artist',
+            views: '800,000',
+            duration: '3:45',
+            thumbnail: `https://picsum.photos/seed/${query}-2/300/180.jpg`,
+            platform: 'Spotify'
+        },
+        {
+            title: `${query} - TikTok Remix`,
+            channel: 'TikTok Creator',
+            views: '5,200,000',
+            duration: '0:45',
+            thumbnail: `https://picsum.photos/seed/${query}-3/300/180.jpg`,
+            platform: 'TikTok'
+        },
+        {
+            title: `${query} - Live Performance`,
+            channel: 'Live Concerts',
+            views: '2,400,000',
+            duration: '5:20',
+            thumbnail: `https://picsum.photos/seed/${query}-4/300/180.jpg`,
             platform: 'YouTube'
         },
         {
             title: `${query} - Cover Version`,
             channel: 'Cover Artist',
-            views: '3,456,123',
-            duration: '4:20',
-            thumbnail: 'https://picsum.photos/seed/music2/300/180.jpg',
-            platform: 'YouTube'
-        },
-        {
-            title: `${query} - Live Performance`,
-            channel: 'Live Concerts',
-            views: '8,765,432',
-            duration: '5:15',
-            thumbnail: 'https://picsum.photos/seed/music3/300/180.jpg',
-            platform: 'YouTube'
-        },
-        {
-            title: `${query} - Dance Cover`,
-            channel: 'Dance Studio',
-            views: '5,432,109',
+            views: '450,000',
             duration: '2:30',
-            thumbnail: 'https://picsum.photos/seed/dance1/300/180.jpg',
-            platform: 'TikTok'
+            thumbnail: `https://picsum.photos/seed/${query}-5/300/180.jpg`,
+            platform: 'Instagram'
         },
         {
-            title: `${query} - Remix`,
-            channel: 'DJ Producer',
-            views: '2,345,678',
-            duration: '3:15',
-            thumbnail: 'https://picsum.photos/seed/remix1/300/180.jpg',
-            platform: 'SoundCloud'
-        },
-        {
-            title: `${query} - Acoustic Version`,
-            channel: 'Acoustic Sessions',
-            views: '1,234,567',
-            duration: '4:00',
-            thumbnail: 'https://picsum.photos/seed/acoustic1/300/180.jpg',
-            platform: 'Spotify'
+            title: `${query} - Lyric Video`,
+            channel: 'Lyric Channel',
+            views: '3,100,000',
+            duration: '3:45',
+            thumbnail: `https://picsum.photos/seed/${query}-6/300/180.jpg`,
+            platform: 'YouTube'
         }
     ];
 }
@@ -471,7 +555,7 @@ function updateSearchResultsSection(searchResults, query) {
                 </div>
             </div>
             <div class="search-result-actions">
-                <button class="search-result-btn" onclick="downloadFromSearchResult('${result.title}', '${result.platform}')">
+                <button class="search-result-btn" onclick="downloadFromSearchResult('${result.title}', '${result.platform}', '${result.videoId || ''}')">
                     <i class="fas fa-download"></i> Download
                 </button>
             </div>
@@ -507,38 +591,19 @@ function closeSearchResults() {
 }
 
 // Download from Search Result
-function downloadFromSearchResult(title, platform) {
-    // In a real implementation, this would fetch the actual URL and details
-    // For now, we'll simulate it
-    showNotification('Processing', `Preparing download for "${title}"...`);
+function downloadFromSearchResult(title, platform, videoId) {
+    // If we have a YouTube video ID, construct the URL
+    if (platform === 'YouTube' && videoId) {
+        currentUrl = `https://youtube.com/watch?v=${videoId}`;
+    } else {
+        currentUrl = 'https://example.com';
+    }
     
-    setTimeout(() => {
-        // Simulate getting video details
-        const mockVideoData = {
-            title: title,
-            channel: `${platform} Channel`,
-            views: '1,000,000',
-            duration: '3:45',
-            uploadDate: '2023-10-20',
-            description: `This is a great ${platform} video that you'll love!`,
-            thumbnail: 'https://picsum.photos/seed/download/800/450.jpg',
-            formats: [
-                { name: 'MP3 (128kbps)', size: '3.2 MB', format: 'mp3', quality: '128' },
-                { name: 'MP3 (320kbps)', size: '8.1 MB', format: 'mp3', quality: '320' },
-                { name: '360p', size: '12.5 MB', format: 'mp4', quality: '360p' },
-                { name: '720p HD', size: '35.4 MB', format: 'mp4', quality: '720p' },
-                { name: '1080p Full HD', size: '68.7 MB', format: 'mp4', quality: '1080p' }
-            ]
-        };
-        
-        // Update video details section
-        updateVideoDetailsSection(mockVideoData);
-        
-        // Show video details section
-        showVideoDetailsSection();
-        
-        showNotification('Ready to Download', 'Select your preferred format and quality');
-    }, 1500);
+    currentTitle = title;
+    currentPlatform = platform;
+    
+    // Fetch video details
+    fetchVideoDetails(currentUrl);
 }
 
 // Check if URL is for short content
@@ -552,18 +617,6 @@ function checkIfShortContent(url) {
     ];
     
     return shortContentPatterns.some(pattern => pattern.test(url));
-}
-
-// Check if URL is for Sora 2 AI content
-function checkIfSoraContent(url) {
-    const soraPatterns = [
-        /openai\.com\/sora/,
-        /sora\.ai/,
-        /chatgpt\.com\/.*\/share/,
-        /sora2/
-    ];
-    
-    return soraPatterns.some(pattern => pattern.test(url));
 }
 
 // Detect platform from URL
@@ -658,8 +711,8 @@ function generatePublicLinkForShortContent(url) {
     addToDownloadHistory(downloadData);
 }
 
-// Generate public link
-function generatePublicLink() {
+// Generate public link with API Integration
+async function generatePublicLink() {
     if (!selectedFormat) {
         showNotification('Error', 'Please select a format');
         return;
@@ -674,29 +727,44 @@ function generatePublicLink() {
     // Generate title based on platform
     currentTitle = currentVideoData.title;
     
-    // Create download data
-    const downloadData = {
-        id: publicLinkId,
-        url: currentUrl,
-        title: currentTitle,
-        platform: currentPlatform,
-        format: selectedFormat,
-        quality: selectedQuality,
-        isShortContent: false,
-        timestamp: new Date().toISOString()
-    };
-    
-    // Store in localStorage (simulate backend)
-    localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(downloadData));
-    
-    // Show public link section
-    showPublicLinkSection(downloadData);
-    
-    // Add to history
-    addToDownloadHistory(downloadData);
-    
-    // Show notification
-    showNotification('Link Generated', 'Your download link is ready!');
+    try {
+        // Try to get actual download link from API
+        const downloadLink = await getDownloadLink(currentUrl, selectedFormat, selectedQuality);
+        
+        // Create download data
+        const downloadData = {
+            id: publicLinkId,
+            url: currentUrl,
+            title: currentTitle,
+            platform: currentPlatform,
+            format: selectedFormat,
+            quality: selectedQuality,
+            downloadLink: downloadLink,
+            isShortContent: false,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Store in localStorage (simulate backend)
+        localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(downloadData));
+        
+        // Show public link section
+        showPublicLinkSection(downloadData);
+        
+        // Add to history
+        addToDownloadHistory(downloadData);
+        
+        showNotification('Link Generated', 'Your download link is ready!');
+    } catch (error) {
+        showNotification('Error', 'Failed to generate download link');
+        console.error('Error generating download link:', error);
+    }
+}
+
+// Get download link from API
+async function getDownloadLink(url, format, quality) {
+    // This would integrate with a real API like RapidAPI
+    // For now, return a mock download link
+    return `${API_CONFIG.BASE_URL}/api/download?url=${encodeURIComponent(url)}&format=${format}&quality=${quality}`;
 }
 
 // Generate unique ID
@@ -796,11 +864,28 @@ function downloadFromPublicLink() {
         return;
     }
     
-    // Simulate download
-    simulateDownload(downloadData.format, downloadData.title);
+    // If we have a direct download link, trigger download
+    if (downloadData.downloadLink) {
+        triggerDownload(downloadData.downloadLink, downloadData.title);
+    } else {
+        // Simulate download
+        simulateDownload(downloadData.format, downloadData.title);
+    }
     
     // Update history with download status
     updateDownloadHistoryStatus(publicLinkId, 'completed');
+}
+
+// Trigger actual file download
+function triggerDownload(url, filename) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'download';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    showNotification('Download Started', 'Your download has started');
 }
 
 // Simulate download process
@@ -1167,23 +1252,20 @@ function showPage(page) {
             content: `
                 <div class="page-content">
                     <h3>About ALLIO PRO</h3>
-                    <p>ALLIO PRO is a premium global media downloader developed by LoopLabs Tech. We provide high-quality video and audio downloads from all major social media platforms, including Sora 2 AI content.</p>
+                    <p>ALLIO PRO is a premium global media downloader developed by LoopLabs Tech. We provide high-quality video and audio downloads from all major social media platforms.</p>
                     
                     <h3>Our Mission</h3>
-                    <p>Our mission is to provide the best possible media downloading experience with cutting-edge technology and user-friendly interface. We believe everyone should have easy access to their favorite content across all platforms.</p>
+                    <p>Our mission is to provide the best possible media downloading experience with cutting-edge technology and user-friendly interface.</p>
                     
                     <h3>Why Choose ALLIO PRO?</h3>
                     <ul>
-                        <li>Support for 20+ platforms including Sora 2 AI</li>
+                        <li>Support for 20+ platforms</li>
                         <li>8K video downloads</li>
                         <li>Embedded lyrics in audio files</li>
                         <li>Lightning-fast download speeds</li>
                         <li>Completely free to use</li>
                         <li>No registration required</li>
                     </ul>
-                    
-                    <h3>Our Team</h3>
-                    <p>LoopLabs Tech is a team of passionate developers and designers dedicated to creating innovative solutions for media consumption. With years of experience in web technologies, we've built ALLIO PRO to be the most comprehensive media downloader available.</p>
                 </div>
             `
         },
@@ -1198,25 +1280,6 @@ function showPage(page) {
                     <p><strong>Email:</strong> support@looplabstech.com</p>
                     <p><strong>Instagram:</strong> @looplabstech</p>
                     <p><strong>Business Hours:</strong> Monday - Friday, 9AM - 6PM IST</p>
-                    
-                    <h3>Follow Us</h3>
-                    <div class="social-links">
-                        <a href="https://instagram.com/looplabstech" target="_blank" class="social-link">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="#" class="social-link">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="social-link">
-                            <i class="fab fa-facebook"></i>
-                        </a>
-                        <a href="#" class="social-link">
-                            <i class="fab fa-telegram"></i>
-                        </a>
-                    </div>
-                    
-                    <h3>Send us a Message</h3>
-                    <p>For the fastest response, please contact us through our Instagram page or send an email to support@looplabstech.com. We typically respond within 24 hours.</p>
                 </div>
             `
         },
@@ -1225,7 +1288,7 @@ function showPage(page) {
             content: `
                 <div class="page-content">
                     <h3>Privacy Policy</h3>
-                    <p>At ALLIO PRO, we take your privacy seriously. This policy outlines how we collect, use, and protect your information when you use our service.</p>
+                    <p>At ALLIO PRO, we take your privacy seriously. This policy outlines how we collect, use, and protect your information.</p>
                     
                     <h3>Information We Collect</h3>
                     <ul>
@@ -1233,25 +1296,6 @@ function showPage(page) {
                         <li>Device information (browser type, IP address)</li>
                         <li>Usage data and analytics</li>
                     </ul>
-                    
-                    <h3>How We Use Your Information</h3>
-                    <ul>
-                        <li>To provide and improve our service</li>
-                        <li>To analyze usage patterns</li>
-                        <li>To communicate with you about service updates</li>
-                    </ul>
-                    
-                    <h3>Data Protection</h3>
-                    <p>We implement appropriate security measures to protect your information. However, no method of transmission over the internet is 100% secure.</p>
-                    
-                    <h3>Third-Party Services</h3>
-                    <p>Our service may contain links to third-party websites. We are not responsible for the privacy practices of these sites.</p>
-                    
-                    <h3>Changes to This Policy</h3>
-                    <p>We may update this policy from time to time. We will notify you of any changes by posting the new policy on this page.</p>
-                    
-                    <h3>Contact Us</h3>
-                    <p>If you have any questions about this Privacy Policy, please contact us at support@looplabstech.com</p>
                 </div>
             `
         },
@@ -1262,121 +1306,10 @@ function showPage(page) {
                     <h3>General Questions</h3>
                     
                     <h4>What is ALLIO PRO?</h4>
-                    <p>ALLIO PRO is a free online tool that allows you to download videos and music from various social media platforms including YouTube, Instagram, TikTok, Facebook, Twitter, Telegram, Terabox, StreamNet, DiskWala, and Sora 2 AI.</p>
+                    <p>ALLIO PRO is a free online tool that allows you to download videos and music from various social media platforms.</p>
                     
                     <h4>Is ALLIO PRO free to use?</h4>
                     <p>Yes, ALLIO PRO is completely free to use with no hidden charges or subscription fees.</p>
-                    
-                    <h4>Do I need to register to use ALLIO PRO?</h4>
-                    <p>No registration is required. You can start downloading immediately without creating an account.</p>
-                    
-                    <h3>Download Questions</h3>
-                    
-                    <h4>What formats can I download?</h4>
-                    <p>You can download videos in MP4, WebM, and other formats. Audio can be downloaded as MP3, M4A, or FLAC. We support quality options up to 8K for videos and 320kbps for audio.</p>
-                    
-                    <h4>Can I download entire playlists?</h4>
-                    <p>Yes, ALLIO PRO supports downloading entire playlists from YouTube and other platforms that offer playlists.</p>
-                    
-                    <h4>What is the Sora 2 AI feature?</h4>
-                    <p>Our Sora 2 AI feature allows you to download AI-generated videos from OpenAI's Sora platform. You can also extract the text prompts used to generate these videos.</p>
-                    
-                    <h3>Technical Questions</h3>
-                    
-                    <h4>Is there a download limit?</h4>
-                    <p>There is no strict download limit, but we may implement fair usage policies to ensure service quality for all users.</p>
-                    
-                    <h4>Why is my download slow?</h4>
-                    <p>Download speed depends on your internet connection and the source platform's server load. Try downloading during off-peak hours for better speeds.</p>
-                    
-                    <h4>Can I use ALLIO PRO on mobile?</h4>
-                    <p>Yes, ALLIO PRO is fully responsive and works on all devices including smartphones and tablets.</p>
-                </div>
-            `
-        },
-        blog: {
-            title: 'Blog',
-            content: `
-                <div class="page-content">
-                    <h3>Latest Updates</h3>
-                    
-                    <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                        <h4>Introducing Sora 2 AI Support</h4>
-                        <p style="color: var(--text-muted); margin-bottom: 10px;">Posted on October 15, 2023</p>
-                        <p>We're excited to announce support for downloading and analyzing OpenAI's Sora 2 AI videos. Extract prompts and upscale AI-generated content to 4K resolution.</p>
-                    </div>
-                    
-                    <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                        <h4>New Platform: StreamNet Integration</h4>
-                        <p style="color: var(--text-muted); margin-bottom: 10px;">Posted on September 28, 2023</p>
-                        <p>ALLIO PRO now supports downloading videos from StreamNet platform. Enjoy high-quality downloads with our new dedicated downloader.</p>
-                    </div>
-                    
-                    <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                        <h4>8K Video Downloads Now Available</h4>
-                        <p style="color: var(--text-muted); margin-bottom: 10px;">Posted on September 10, 2023</p>
-                        <p>Experience videos in stunning 8K resolution. We've added support for downloading 8K videos from YouTube and other supported platforms.</p>
-                    </div>
-                    
-                    <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                        <h4>Embedded Lyrics Feature Launch</h4>
-                        <p style="color: var(--text-muted); margin-bottom: 10px;">Posted on August 22, 2023</p>
-                        <p>Now you can download MP3 files with embedded lyrics and cover art. Sing along to your favorite songs with synchronized lyrics.</p>
-                    </div>
-                </div>
-            `
-        },
-        docs: {
-            title: 'Documentation',
-            content: `
-                <div class="page-content">
-                    <h3>Getting Started</h3>
-                    <p>Welcome to ALLIO PRO documentation. Here you'll find everything you need to know about using our service.</p>
-                    
-                    <h3>Basic Usage</h3>
-                    <ol>
-                        <li>Copy the URL of the video or music you want to download</li>
-                        <li>Paste it into the search box on our homepage</li>
-                        <li>Select your preferred format and quality</li>
-                        <li>Click the download button</li>
-                    </ol>
-                    
-                    <h3>Supported Platforms</h3>
-                    <ul>
-                        <li><strong>YouTube:</strong> Videos, music, playlists</li>
-                        <li><strong>Instagram:</strong> Posts, reels, stories, IGTV</li>
-                        <li><strong>TikTok:</strong> Videos without watermark</li>
-                        <li><strong>Facebook:</strong> Videos, reels</li>
-                        <li><strong>Twitter:</strong> Videos, GIFs</li>
-                        <li><strong>Telegram:</strong> Files from channels and chats</li>
-                        <li><strong>Terabox:</strong> Cloud storage files</li>
-                        <li><strong>StreamNet:</strong> Platform videos</li>
-                        <li><strong>DiskWala:</strong> Cloud storage files</li>
-                        <li><strong>Sora 2 AI:</strong> AI-generated videos with prompt extraction</li>
-                    </ul>
-                    
-                    <h3>Advanced Features</h3>
-                    <h4>Platform Settings</h4>
-                    <p>Set default download formats and qualities for each platform. Go to Settings > Platform Settings to configure your preferences.</p>
-                    
-                    <h4>Audio with Lyrics</h4>
-                    <p>When downloading audio files, you can choose to include embedded lyrics and cover art. This feature works for most popular songs.</p>
-                    
-                    <h4>Browser Mode</h4>
-                    <p>Use our built-in browser to navigate websites and download media directly from any page. This is useful for sites not directly supported.</p>
-                    
-                    <h3>Troubleshooting</h3>
-                    <h4>Download Failed</h4>
-                    <p>If a download fails, try the following:</p>
-                    <ul>
-                        <li>Check if the URL is correct</li>
-                        <li>Try a different quality option</li>
-                        <li>Clear your browser cache and cookies</li>
-                        <li>Try again later as the source may be temporarily unavailable</li>
-                    </ul>
-                    
-                    <h4>Video Not Playing</h4>
-                    <p>If your downloaded video doesn't play, try using a different media player like VLC or MPC-HC. Some formats may require specific codecs.</p>
                 </div>
             `
         }
@@ -1414,10 +1347,6 @@ function shareApp() {
                     <i class="fas fa-copy"></i> Copy Link
                 </button>
             </div>
-            
-            <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; margin-top: 20px;">
-                <p style="font-family: monospace; word-break: break-all;">https://allio-delta.vercel.app/?ref=share</p>
-            </div>
         </div>
     `;
     pageModal.classList.add('show');
@@ -1425,7 +1354,7 @@ function shareApp() {
 
 // Share via WhatsApp
 function shareViaWhatsApp() {
-    const text = "Check out ALLIO PRO - The ultimate media downloader for all platforms! https://allio-delta.vercel.app/?ref=share";
+    const text = "Check out ALLIO PRO - The ultimate media downloader! https://allio-delta.vercel.app/?ref=share";
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     showNotification('Sharing', 'Opening WhatsApp...');
@@ -1433,7 +1362,7 @@ function shareViaWhatsApp() {
 
 // Share via Telegram
 function shareViaTelegram() {
-    const text = "Check out ALLIO PRO - The ultimate media downloader for all platforms! https://allio-delta.vercel.app/?ref=share";
+    const text = "Check out ALLIO PRO - The ultimate media downloader! https://allio-delta.vercel.app/?ref=share";
     const url = `https://t.me/share/url?url=${encodeURIComponent('https://allio-delta.vercel.app/?ref=share')}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     showNotification('Sharing', 'Opening Telegram...');
@@ -1447,7 +1376,7 @@ function copyShareLink() {
     });
 }
 
-// App Launcher Functions
+// App Launcher Functions with Favicon Integration
 function showAppLauncher() {
     // Hide other sections
     searchSection.style.display = 'none';
@@ -1463,7 +1392,7 @@ function showAppLauncher() {
     // Show app launcher section
     appLauncherSection.classList.remove('hidden');
     
-    // Load apps
+    // Load apps with favicons
     loadAppLauncherApps();
     
     // Close menu
@@ -1488,15 +1417,28 @@ function loadAppLauncherApps() {
         appItem.className = 'app-item';
         appItem.onclick = () => openApp(app);
         
+        // Create favicon URL
+        const faviconUrl = getFaviconUrl(app.url);
+        
         appItem.innerHTML = `
-            <div class="app-icon" style="background: ${app.color}">
-                <i class="${app.icon}"></i>
+            <div class="app-icon">
+                <img src="${faviconUrl}" alt="${app.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <i class="${app.icon}" style="display:none;"></i>
             </div>
             <div class="app-name">${app.name}</div>
         `;
         
         appsGrid.appendChild(appItem);
     });
+}
+
+// Get favicon URL using Google API
+function getFaviconUrl(url) {
+    if (url === '#') return '';
+    
+    // Extract domain from URL
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 }
 
 function openApp(app) {
@@ -1574,7 +1516,7 @@ function addCustomWebsite() {
     showNotification('Success', 'Website added successfully!');
 }
 
-// Browser Mode Functions
+// Browser Mode Functions with Enhanced Search
 function showBrowser() {
     // Hide other sections
     searchSection.style.display = 'none';
@@ -1605,20 +1547,81 @@ function loadBrowserUrl() {
     const url = browserUrlInput.value.trim();
     if (!url) return;
     
-    // Add https:// if not present
-    let finalUrl = url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        finalUrl = 'https://' + url;
+    // Check if it's a search query or URL
+    if (isSearchQuery(url)) {
+        // Redirect to Google search
+        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+        browserIframe.src = searchUrl;
+        browserUrlInput.value = searchUrl;
+    } else {
+        // Load URL in iframe
+        let finalUrl = url;
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            finalUrl = 'https://' + url;
+        }
+        
+        browserIframe.src = finalUrl;
+        browserUrlInput.value = finalUrl;
     }
     
-    // Load URL in iframe
-    browserIframe.src = finalUrl;
-    
-    // Clear previous results
+    // Clear previous results and hide error
     browserResults.innerHTML = '';
+    browserError.classList.add('hidden');
     
+    // Show loading notification
     showNotification('Browser', 'Loading website...');
+    
+    // Add to browser history
+    addToBrowserHistory(finalUrl);
 }
+
+// Check if input is a search query
+function isSearchQuery(input) {
+    // Simple check: if it doesn't contain a dot and doesn't start with http, it's likely a search
+    return !input.includes('.') && !input.startsWith('http') && !input.includes(' ');
+}
+
+// Add to browser history
+function addToBrowserHistory(url) {
+    browserHistory.push(url);
+    if (browserHistory.length > 20) {
+        browserHistory.shift();
+    }
+    browserHistoryIndex = browserHistory.length - 1;
+}
+
+// Browser navigation functions
+function browserGoHome() {
+    browserUrlInput.value = 'https://www.google.com';
+    loadBrowserUrl();
+}
+
+function browserGoBack() {
+    if (browserHistoryIndex > 0) {
+        browserHistoryIndex--;
+        browserUrlInput.value = browserHistory[browserHistoryIndex];
+        loadBrowserUrl();
+    }
+}
+
+function browserGoForward() {
+    if (browserHistoryIndex < browserHistory.length - 1) {
+        browserHistoryIndex++;
+        browserUrlInput.value = browserHistory[browserHistoryIndex];
+        loadBrowserUrl();
+    }
+}
+
+function browserRefresh() {
+    browserIframe.src = browserIframe.src;
+    showNotification('Browser', 'Refreshing page...');
+}
+
+// Handle iframe load error
+browserIframe.addEventListener('error', function() {
+    browserError.classList.remove('hidden');
+    showNotification('Error', 'Cannot load this website due to security restrictions');
+});
 
 function extractMediaFromBrowser() {
     // Simulate media extraction
@@ -1716,7 +1719,7 @@ function downloadFromBrowser(title) {
     }, 2000);
 }
 
-// Direct Search Functions
+// Direct Search Functions with Platform Filters
 function showDirectSearch() {
     // Hide other sections
     searchSection.style.display = 'none';
@@ -1734,6 +1737,9 @@ function showDirectSearch() {
     
     // Close menu
     menu.classList.remove('show');
+    
+    // Setup filter buttons
+    setupFilterButtons();
 }
 
 function closeDirectSearch() {
@@ -1743,57 +1749,104 @@ function closeDirectSearch() {
     document.querySelector('.ad-banner').style.display = 'block';
 }
 
-function performDirectSearch() {
+function setupFilterButtons() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Store selected platform
+            const selectedPlatform = this.getAttribute('data-platform');
+            localStorage.setItem('selectedSearchPlatform', selectedPlatform);
+        });
+    });
+    
+    // Load saved platform preference
+    const savedPlatform = localStorage.getItem('selectedSearchPlatform') || 'all';
+    const savedButton = document.querySelector(`[data-platform="${savedPlatform}"]`);
+    if (savedButton) {
+        savedButton.classList.add('active');
+    }
+}
+
+async function performDirectSearch() {
     const query = directSearchInput.value.trim();
     if (!query) return;
     
+    const activeFilter = document.querySelector('.filter-btn.active');
+    const platform = activeFilter ? activeFilter.getAttribute('data-platform') : 'all';
+    
     showNotification('Searching', `Finding: ${query}`);
     
-    // Simulate search
-    setTimeout(() => {
-        // Mock results
-        const mockResults = [
-            { title: `${query} - Official Video`, platform: 'YouTube', duration: '3:45', views: '1.2M' },
-            { title: `${query} - Audio Version`, platform: 'Spotify', duration: '3:45', views: '800K' },
-            { title: `${query} - TikTok Remix`, platform: 'TikTok', duration: '0:45', views: '5.2M' },
-            { title: `${query} - Live Performance`, platform: 'YouTube', duration: '5:20', views: '2.4M' },
-            { title: `${query} - Cover Version`, platform: 'Instagram', duration: '2:30', views: '450K' },
-            { title: `${query} - Lyric Video`, platform: 'YouTube', duration: '3:45', views: '3.1M' },
-            { title: `${query} - Dance Cover`, platform: 'TikTok', duration: '1:00', views: '8.7M' },
-            { title: `${query} - Acoustic Version`, platform: 'SoundCloud', duration: '4:15', views: '320K' },
-            { title: `${query} - Remix`, platform: 'Spotify', duration: '3:20', views: '680K' },
-            { title: `${query} - Behind the Scenes`, platform: 'YouTube', duration: '7:10', views: '1.8M' }
-        ];
+    try {
+        // Try to fetch from API with platform filter
+        const searchResults = await searchMediaFromAPIWithPlatform(query, platform);
         
         // Display results
-        directSearchResults.innerHTML = '';
+        displayDirectSearchResults(searchResults);
         
-        mockResults.forEach(result => {
-            const resultItem = document.createElement('div');
-            resultItem.className = 'direct-search-item';
-            resultItem.innerHTML = `
-                <div class="direct-search-thumbnail">
-                    <i class="fas fa-${result.platform === 'Spotify' || result.platform === 'SoundCloud' ? 'music' : 'video'}"></i>
+        showNotification('Search Complete', `Found ${searchResults.length} results`);
+    } catch (error) {
+        showNotification('Error', 'Failed to search. Please try again.');
+        console.error('Error searching media:', error);
+    }
+}
+
+// Search with platform filter
+async function searchMediaFromAPIWithPlatform(query, platform) {
+    // For now, return mock data filtered by platform
+    const allResults = await simulateSearchAPI(query);
+    
+    if (platform === 'all') {
+        return allResults;
+    }
+    
+    return allResults.filter(result => result.platform.toLowerCase() === platform);
+}
+
+function displayDirectSearchResults(results) {
+    // Clear existing results
+    directSearchResults.innerHTML = '';
+    
+    if (results.length === 0) {
+        directSearchResults.innerHTML = `
+            <div class="empty-results">
+                <i class="fas fa-search"></i>
+                <p>No results found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Display each result
+    results.forEach(result => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'direct-search-item';
+        resultItem.innerHTML = `
+            <div class="direct-search-thumbnail">
+                <img src="${result.thumbnail}" alt="${result.title}">
+            </div>
+            <div class="direct-search-info">
+                <div class="direct-search-title">${result.title}</div>
+                <div class="direct-search-meta">
+                    <span><i class="fas fa-globe"></i> ${result.platform}</span>
+                    <span><i class="fas fa-clock"></i> ${result.duration}</span>
+                    <span><i class="fas fa-eye"></i> ${formatViewCount(result.views)}</span>
                 </div>
-                <div class="direct-search-info">
-                    <div class="direct-search-title">${result.title}</div>
-                    <div class="direct-search-meta">
-                        <span><i class="fas fa-globe"></i> ${result.platform}</span>
-                        <span><i class="fas fa-clock"></i> ${result.duration}</span>
-                        <span><i class="fas fa-eye"></i> ${result.views}</span>
-                    </div>
-                </div>
-                <div class="direct-search-actions">
-                    <button class="direct-search-btn" onclick="downloadFromDirectSearch('${result.title}', '${result.platform}')">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                </div>
-            `;
-            directSearchResults.appendChild(resultItem);
-        });
-        
-        showNotification('Search Complete', `Found ${mockResults.length} results`);
-    }, 1500);
+            </div>
+            <div class="direct-search-actions">
+                <button class="direct-search-btn" onclick="downloadFromDirectSearch('${result.title}', '${result.platform}')">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+        `;
+        directSearchResults.appendChild(resultItem);
+    });
 }
 
 function downloadFromDirectSearch(title, platform) {
@@ -1822,6 +1875,14 @@ function downloadFromDirectSearch(title, platform) {
 // Enter Key Support
 input.addEventListener('keypress', (e) => { 
     if(e.key === 'Enter') processInput(); 
+});
+
+browserUrlInput.addEventListener('keypress', (e) => { 
+    if(e.key === 'Enter') loadBrowserUrl(); 
+});
+
+directSearchInput.addEventListener('keypress', (e) => { 
+    if(e.key === 'Enter') performDirectSearch(); 
 });
 
 // Close menu on outside click
@@ -1854,6 +1915,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Load download history
     downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+    
+    // Load custom websites
+    customWebsites = JSON.parse(localStorage.getItem('customWebsites') || '[]');
     
     // Check for shared URL
     const urlParams = new URLSearchParams(window.location.search);
