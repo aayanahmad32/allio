@@ -34,36 +34,6 @@ const API_CONFIG = {
     BASE_URL: 'https://allio-delta.vercel.app'
 };
 
-// App Launcher Data with proper favicon support
-const appLauncherApps = [
-    { name: 'YouTube', icon: 'fab fa-youtube', color: '#FF0000', url: 'https://youtube.com' },
-    { name: 'Instagram', icon: 'fab fa-instagram', color: '#E1306C', url: 'https://instagram.com' },
-    { name: 'TikTok', icon: 'fab fa-tiktok', color: '#000000', url: 'https://tiktok.com' },
-    { name: 'Facebook', icon: 'fab fa-facebook', color: '#1877F2', url: 'https://facebook.com' },
-    { name: 'Twitter', icon: 'fab fa-twitter', color: '#1DA1F2', url: 'https://twitter.com' },
-    { name: 'Telegram', icon: 'fab fa-telegram', color: '#0088CC', url: 'https://telegram.org' },
-    { name: 'Terabox', icon: 'fas fa-cloud', color: '#00D4AA', url: 'https://terabox.com' },
-    { name: 'StreamNet', icon: 'fas fa-network-wired', color: '#6A5ACD', url: 'https://streamnet.com' },
-    { name: 'DiskWala', icon: 'fas fa-hdd', color: '#FF8C00', url: 'https://diskwala.com' },
-    { name: 'SoundCloud', icon: 'fab fa-soundcloud', color: '#FF3300', url: 'https://soundcloud.com' },
-    { name: 'Spotify', icon: 'fab fa-spotify', color: '#1DB954', url: 'https://spotify.com' },
-    { name: 'Vimeo', icon: 'fab fa-vimeo', color: '#1AB7EA', url: 'https://vimeo.com' },
-    { name: 'Dailymotion', icon: 'fab fa-dailymotion', color: '#0066DC', url: 'https://dailymotion.com' },
-    { name: 'Twitch', icon: 'fab fa-twitch', color: '#9146FF', url: 'https://twitch.tv' },
-    { name: 'Pinterest', icon: 'fab fa-pinterest', color: '#E60023', url: 'https://pinterest.com' },
-    { name: 'Reddit', icon: 'fab fa-reddit', color: '#FF4500', url: 'https://reddit.com' },
-    { name: 'LinkedIn', icon: 'fab fa-linkedin', color: '#0077B5', url: 'https://linkedin.com' },
-    { name: 'Snapchat', icon: 'fab fa-snapchat', color: '#FFFC00', url: 'https://snapchat.com' },
-    { name: 'News', icon: 'fas fa-newspaper', color: '#3498DB', url: 'https://news.google.com' },
-    { name: 'Bookmark', icon: 'fas fa-bookmark', color: '#F39C12', url: '#' },
-    { name: 'Daily News', icon: 'fas fa-newspaper', color: '#E74C3C', url: 'https://news.google.com' },
-    { name: 'Win Cash', icon: 'fas fa-coins', color: '#2ECC71', url: '#' },
-    { name: 'Status Saver', icon: 'fas fa-save', color: '#9B59B6', url: '#' }
-];
-
-// Custom websites storage
-let customWebsites = JSON.parse(localStorage.getItem('customWebsites') || '[]');
-
 // --- DOM ELEMENTS ---
 const input = document.getElementById('inputUrl');
 const bottomSheet = document.getElementById('bottomSheet');
@@ -100,9 +70,8 @@ const downloadVideoBtn = document.getElementById('downloadVideoBtn');
 const searchResultsSection = document.getElementById('searchResultsSection');
 const searchResultsContainer = document.getElementById('searchResultsContainer');
 
-// New elements for app launcher
-const appLauncherSection = document.getElementById('appLauncherSection');
-const appsGrid = document.getElementById('appsGrid');
+// Variable to store current video data
+let currentVideoData = {};
 
 // --- FUNCTIONS ---
 
@@ -145,6 +114,35 @@ async function pasteFromClipboard() {
     } catch (err) {
         showNotification('Error', 'Could not access clipboard');
     }
+}
+
+// Set platform for quick access
+function setPlatform(platform) {
+    currentPlatform = platform;
+    const platformUrls = {
+        youtube: 'https://youtube.com',
+        instagram: 'https://instagram.com',
+        tiktok: 'https://tiktok.com',
+        facebook: 'https://facebook.com',
+        twitter: 'https://twitter.com',
+        telegram: 'https://telegram.org',
+        soundcloud: 'https://soundcloud.com',
+        spotify: 'https://spotify.com'
+    };
+    
+    input.placeholder = `Search ${platform.charAt(0).toUpperCase() + platform.slice(1)} or paste URL...`;
+    input.focus();
+    
+    // Highlight selected platform
+    document.querySelectorAll('.platform-item').forEach(item => {
+        item.style.background = 'rgba(255, 255, 255, 0.03)';
+        item.style.border = '1px solid var(--glass-border)';
+    });
+    
+    event.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)';
+    event.currentTarget.style.border = '1px solid rgba(102, 126, 234, 0.5)';
+    
+    showNotification('Platform Selected', `Now searching on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`);
 }
 
 // Enhanced Search Function with API Integration
@@ -399,7 +397,6 @@ function showVideoDetailsSection() {
     document.querySelector('.ad-banner').style.display = 'none';
     publicLinkSection.classList.add('hidden');
     downloadHistorySection.classList.add('hidden');
-    appLauncherSection.classList.add('hidden');
     searchResultsSection.classList.add('hidden');
     
     // Show video details section
@@ -563,7 +560,6 @@ function showSearchResultsSection() {
     document.querySelector('.ad-banner').style.display = 'none';
     publicLinkSection.classList.add('hidden');
     downloadHistorySection.classList.add('hidden');
-    appLauncherSection.classList.add('hidden');
     videoDetailsSection.classList.add('hidden');
     
     // Show search results section
@@ -767,7 +763,6 @@ function showPublicLinkSection(downloadData) {
     document.querySelector('.seo-content').style.display = 'none';
     document.querySelector('.ad-banner').style.display = 'none';
     downloadHistorySection.classList.add('hidden');
-    appLauncherSection.classList.add('hidden');
     videoDetailsSection.classList.add('hidden');
     searchResultsSection.classList.add('hidden');
     
@@ -937,7 +932,6 @@ function showDownloadHistory() {
     document.querySelector('.seo-content').style.display = 'none';
     document.querySelector('.ad-banner').style.display = 'none';
     publicLinkSection.classList.add('hidden');
-    appLauncherSection.classList.add('hidden');
     videoDetailsSection.classList.add('hidden');
     searchResultsSection.classList.add('hidden');
     
@@ -1135,12 +1129,6 @@ function toggleTheme() {
     
     // Show notification
     showNotification('Theme Changed', `Switched to ${newTheme} mode`);
-}
-
-// Toggle Private Mode
-function togglePrivateMode() {
-    privateMode = !privateMode;
-    showNotification('Private Mode', privateMode ? 'Enabled - Your downloads are now private' : 'Disabled');
 }
 
 // Show Notification
@@ -1360,140 +1348,6 @@ function copyShareLink() {
     });
 }
 
-// App Launcher Functions with Favicon Integration
-function showAppLauncher() {
-    // Hide other sections
-    searchSection.style.display = 'none';
-    document.querySelector('.seo-content').style.display = 'none';
-    document.querySelector('.ad-banner').style.display = 'none';
-    publicLinkSection.classList.add('hidden');
-    downloadHistorySection.classList.add('hidden');
-    videoDetailsSection.classList.add('hidden');
-    searchResultsSection.classList.add('hidden');
-    
-    // Show app launcher section
-    appLauncherSection.classList.remove('hidden');
-    
-    // Load apps with favicons
-    loadAppLauncherApps();
-    
-    // Close menu
-    menu.classList.remove('show');
-}
-
-function closeAppLauncher() {
-    appLauncherSection.classList.add('hidden');
-    searchSection.style.display = 'block';
-    document.querySelector('.seo-content').style.display = 'block';
-    document.querySelector('.ad-banner').style.display = 'block';
-}
-
-function loadAppLauncherApps() {
-    appsGrid.innerHTML = '';
-    
-    // Combine default apps with custom websites
-    const allApps = [...appLauncherApps, ...customWebsites];
-    
-    allApps.forEach(app => {
-        const appItem = document.createElement('div');
-        appItem.className = 'app-item';
-        appItem.onclick = () => openApp(app);
-        
-        // Create favicon URL
-        const faviconUrl = getFaviconUrl(app.url);
-        
-        appItem.innerHTML = `
-            <div class="app-icon">
-                <img src="${faviconUrl}" alt="${app.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <i class="${app.icon}" style="display:none;"></i>
-            </div>
-            <div class="app-name">${app.name}</div>
-        `;
-        
-        appsGrid.appendChild(appItem);
-    });
-}
-
-// Get favicon URL using Google API
-function getFaviconUrl(url) {
-    if (url === '#') return '';
-    
-    // Extract domain from URL
-    const domain = new URL(url).hostname;
-    return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-}
-
-function openApp(app) {
-    if (app.url === '#') {
-        showNotification('Coming Soon', `${app.name} will be available soon!`);
-        return;
-    }
-    
-    // Open in new tab
-    window.open(app.url, '_blank');
-}
-
-// Show Add Website Modal
-function showAddWebsiteModal() {
-    document.getElementById('addWebsiteModal').classList.add('show');
-}
-
-// Close Add Website Modal
-function closeAddWebsiteModal() {
-    document.getElementById('addWebsiteModal').classList.remove('show');
-}
-
-// Add Custom Website
-function addCustomWebsite() {
-    const name = document.getElementById('websiteName').value.trim();
-    const url = document.getElementById('websiteUrl').value.trim();
-    const icon = document.getElementById('websiteIcon').value.trim() || 'fas fa-globe';
-    const color = document.getElementById('websiteColor').value;
-    
-    if (!name || !url) {
-        showNotification('Error', 'Please enter website name and URL');
-        return;
-    }
-    
-    // Add https:// if not present
-    let finalUrl = url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        finalUrl = 'https://' + url;
-    }
-    
-    // Create new website object
-    const newWebsite = {
-        name: name,
-        url: finalUrl,
-        icon: icon,
-        color: color,
-        isCustom: true
-    };
-    
-    // Add to custom websites array
-    customWebsites.push(newWebsite);
-    
-    // Save to localStorage
-    localStorage.setItem('customWebsites', JSON.stringify(customWebsites));
-    
-    // Reload app launcher
-    loadAppLauncherApps();
-    
-    // Close modal
-    closeAddWebsiteModal();
-    
-    // Clear form
-    document.getElementById('websiteName').value = '';
-    document.getElementById('websiteUrl').value = '';
-    document.getElementById('websiteIcon').value = '';
-    document.getElementById('websiteColor').value = '#667eea';
-    
-    showNotification('Success', 'Website added successfully!');
-}
-
-// Variable to store current video data
-let currentVideoData = {};
-
 // Enter Key Support
 input.addEventListener('keypress', (e) => { 
     if(e.key === 'Enter') processInput(); 
@@ -1529,9 +1383,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Load download history
     downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
-    
-    // Load custom websites
-    customWebsites = JSON.parse(localStorage.getItem('customWebsites') || '[]');
     
     // Check for shared URL
     const urlParams = new URLSearchParams(window.location.search);

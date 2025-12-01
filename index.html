@@ -132,10 +132,7 @@
         <!-- 3 Dot Menu -->
         <div class="dropdown-menu" id="menu">
             <div class="d-item" onclick="location.reload()">🏠 Home</div>
-            <div class="d-item" onclick="showAppLauncher()">📱 App Launcher</div>
-            <div class="d-item" onclick="location.reload()">📦 Batch Downloader</div>
             <div class="d-item" onclick="showDownloadHistory()">📋 Download History</div>
-            <div class="d-item" onclick="togglePrivateMode()">🔒 Private Mode</div>
             <div class="d-item" onclick="toggleTheme()">🌓 Theme</div>
             <div class="d-item" onclick="openSettings()">⚙️ Platform Settings</div>
             <div class="d-item" onclick="resetDefaultSettings()">🔄 Reset Default Settings</div>
@@ -162,6 +159,42 @@
                 </button>
                 <input type="text" class="main-input" id="inputUrl" placeholder="Paste URL or Search Song Name...">
                 <button class="search-btn" onclick="processInput()">FETCH</button>
+            </div>
+            
+            <!-- Platform Quick Access -->
+            <div class="platform-quick-access">
+                <div class="platform-item" onclick="setPlatform('youtube')">
+                    <i class="fab fa-youtube"></i>
+                    <span>YouTube</span>
+                </div>
+                <div class="platform-item" onclick="setPlatform('instagram')">
+                    <i class="fab fa-instagram"></i>
+                    <span>Instagram</span>
+                </div>
+                <div class="platform-item" onclick="setPlatform('tiktok')">
+                    <i class="fab fa-tiktok"></i>
+                    <span>TikTok</span>
+                </div>
+                <div class="platform-item" onclick="setPlatform('facebook')">
+                    <i class="fab fa-facebook"></i>
+                    <span>Facebook</span>
+                </div>
+                <div class="platform-item" onclick="setPlatform('twitter')">
+                    <i class="fab fa-twitter"></i>
+                    <span>Twitter</span>
+                </div>
+                <div class="platform-item" onclick="setPlatform('telegram')">
+                    <i class="fab fa-telegram"></i>
+                    <span>Telegram</span>
+                </div>
+                <div class="platform-item" onclick="setPlatform('soundcloud')">
+                    <i class="fab fa-soundcloud"></i>
+                    <span>SoundCloud</span>
+                </div>
+                <div class="platform-item" onclick="setPlatform('spotify')">
+                    <i class="fab fa-spotify"></i>
+                    <span>Spotify</span>
+                </div>
             </div>
             
             <!-- Live Stats Bar -->
@@ -263,27 +296,6 @@
                 
                 <div class="search-results-container" id="searchResultsContainer">
                     <!-- Search results will be dynamically added here -->
-                </div>
-            </div>
-        </section>
-
-        <!-- APP LAUNCHER SECTION -->
-        <section id="appLauncherSection" class="hidden">
-            <div class="container glass-panel">
-                <div class="section-header">
-                    <h2>App Launcher</h2>
-                    <button class="close-section-btn" onclick="closeAppLauncher()">×</button>
-                </div>
-                
-                <!-- Add Custom Website Button -->
-                <div class="add-website-container">
-                    <button class="add-website-btn" onclick="showAddWebsiteModal()">
-                        <i class="fas fa-plus"></i> Add Custom Website
-                    </button>
-                </div>
-                
-                <div class="apps-grid" id="appsGrid">
-                    <!-- Apps will be dynamically added here -->
                 </div>
             </div>
         </section>
@@ -521,7 +533,7 @@
             </div>
             
             <!-- Video Section -->
-            <div class="format-section">
+            <div class="section">
                 <h4>Video</h4>
                 <div class="format-options">
                     <label class="format-option">
@@ -613,7 +625,6 @@
                     <li><a href="#">Playlist Downloads</a></li>
                     <li><a href="#">Global Platform Support</a></li>
                     <li><a href="#">Lightning Fast</a></li>
-                    <li><a href="#">Built-in Browser</a></li>
                     <li><a href="#">StreamNet Integration</a></li>
                     <li><a href="#">DiskWala Integration</a></li>
                 </ul>
@@ -795,43 +806,6 @@
             
             <div class="popup-actions">
                 <button class="popup-btn popup-btn-cancel" onclick="closePageModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ADD WEBSITE MODAL -->
-    <div class="popup-overlay" id="addWebsiteModal">
-        <div class="popup">
-            <div class="popup-header">
-                <div class="popup-title">Add Custom Website</div>
-                <button class="popup-close" onclick="closeAddWebsiteModal()">×</button>
-            </div>
-            
-            <div class="popup-content">
-                <div class="form-group">
-                    <label for="websiteName">Website Name</label>
-                    <input type="text" id="websiteName" class="form-input" placeholder="e.g. My Website">
-                </div>
-                
-                <div class="form-group">
-                    <label for="websiteUrl">Website URL</label>
-                    <input type="text" id="websiteUrl" class="form-input" placeholder="e.g. https://example.com">
-                </div>
-                
-                <div class="form-group">
-                    <label for="websiteIcon">Icon (Optional)</label>
-                    <input type="text" id="websiteIcon" class="form-input" placeholder="Font Awesome class (e.g. fas fa-globe)">
-                </div>
-                
-                <div class="form-group">
-                    <label for="websiteColor">Color</label>
-                    <input type="color" id="websiteColor" class="form-input" value="#667eea">
-                </div>
-            </div>
-            
-            <div class="popup-actions">
-                <button class="popup-btn popup-btn-cancel" onclick="closeAddWebsiteModal()">Cancel</button>
-                <button class="popup-btn popup-btn-download" onclick="addCustomWebsite()">Add Website</button>
             </div>
         </div>
     </div>

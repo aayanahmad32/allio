@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allio-pro-v2';
+const CACHE_NAME = 'allio-pro-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -7,25 +7,23 @@ const ASSETS_TO_CACHE = [
   '/manifest.json'
 ];
 
-// Install Event: Cache core files
+// Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
     .then((cache) => {
-      console.log('Service Worker: Caching Files');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate Event: Clean up old caches
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: Clearing Old Cache');
             return caches.delete(cacheName);
           }
         })
@@ -34,10 +32,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Serve from cache, fallback to network
+// Fetch Event
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests (like Google Images, Font Awesome, APIs)
-  if (!event.request.url.startsWith(self.location.origin)) {
+  // Do not cache API calls (Google APIs, RapidAPI, etc.)
+  if (event.request.url.includes('googleapis.com') ||
+    event.request.url.includes('rapidapi.com') ||
+    !event.request.url.startsWith(self.location.origin)) {
     return;
   }
   
