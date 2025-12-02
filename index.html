@@ -568,7 +568,7 @@
         </div>
     </div>
 
-    <!-- FOOTER -->
+    <!-- FOOTER (Simplified) -->
     <footer>
         <div class="footer-content">
             <div class="footer-section">
@@ -586,63 +586,6 @@
                     </a>
                     <a href="#" class="social-link">
                         <i class="fab fa-telegram"></i>
-                    </a>
-                </div>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Supported Platforms</h3>
-                <ul>
-                    <li><a href="#">YouTube</a></li>
-                    <li><a href="#">Instagram</a></li>
-                    <li><a href="#">TikTok</a></li>
-                    <li><a href="#">Facebook</a></li>
-                    <li><a href="#">Twitter</a></li>
-                    <li><a href="#">Telegram</a></li>
-                    <li><a href="#">Terabox</a></li>
-                    <li><a href="#">StreamNet</a></li>
-                    <li><a href="#">DiskWala</a></li>
-                    <li><a href="#">Snapchat</a></li>
-                    <li><a href="#">LinkedIn</a></li>
-                    <li><a href="#">Pinterest</a></li>
-                    <li><a href="#">Reddit</a></li>
-                    <li><a href="#">Vimeo</a></li>
-                    <li><a href="#">Dailymotion</a></li>
-                    <li><a href="#">Twitch</a></li>
-                    <li><a href="#">SoundCloud</a></li>
-                    <li><a href="#">Spotify</a></li>
-                </ul>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Features</h3>
-                <ul>
-                    <li><a href="#">8K Video Downloads</a></li>
-                    <li><a href="#">4K Video Downloads</a></li>
-                    <li><a href="#">2K Video Downloads</a></li>
-                    <li><a href="#">Hi-Res Audio Extraction</a></li>
-                    <li><a href="#">Embedded Lyrics</a></li>
-                    <li><a href="#">Playlist Downloads</a></li>
-                    <li><a href="#">Global Platform Support</a></li>
-                    <li><a href="#">Lightning Fast</a></li>
-                    <li><a href="#">StreamNet Integration</a></li>
-                    <li><a href="#">DiskWala Integration</a></li>
-                </ul>
-            </div>
-            
-            <div class="footer-section">
-                <h3>Contact & Follow</h3>
-                <ul>
-                    <li><strong>Business:</strong> LoopLabs Tech</li>
-                    <li><strong>Instagram:</strong> @looplabstech</li>
-                    <li><strong>Email:</strong> support@looplabstech.com</li>
-                </ul>
-                <div class="social-links">
-                    <a href="https://instagram.com/looplabstech" target="_blank" class="social-link">
-                        <i class="fab fa-instagram"></i> Follow
-                    </a>
-                    <a href="mailto:support@looplabstech.com" class="social-link">
-                        <i class="fas fa-envelope"></i> Contact
                     </a>
                 </div>
             </div>
@@ -806,6 +749,27 @@
             
             <div class="popup-actions">
                 <button class="popup-btn popup-btn-cancel" onclick="closePageModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div class="popup-overlay" id="qrModal">
+        <div class="popup">
+            <div class="popup-header">
+                <div class="popup-title">Share QR Code</div>
+                <button class="popup-close" onclick="closeQrModal()">×</button>
+            </div>
+            
+            <div class="popup-content">
+                <div id="qrCodeContainer" style="display: flex; justify-content: center; margin: 20px 0;">
+                    <!-- QR code will be generated here -->
+                </div>
+                <p style="text-align: center; margin-top: 15px;">Scan this QR code to share the download link</p>
+            </div>
+            
+            <div class="popup-actions">
+                <button class="popup-btn popup-btn-cancel" onclick="closeQrModal()">Close</button>
             </div>
         </div>
     </div>

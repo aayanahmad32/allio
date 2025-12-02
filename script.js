@@ -1,609 +1,241 @@
-// --- UI STATE VARIABLES ---
-let currentMode = 'video';
-let lyricsEnabled = true;
-let privateMode = false;
-let selectedFormat = 'classic-mp3';
-let selectedQuality = 'high';
-let isShortContent = false;
-let browserHistory = [];
-let browserHistoryIndex = -1;
-let currentLanguage = 'en';
-let currentPlatform = '';
-let currentUrl = '';
-let currentTitle = '';
-let publicLinkId = '';
-let downloadHistory = [];
-let defaultSettings = {
-    format: 'video',
-    quality: 'high',
-    lyrics: true
-};
-let platformSettings = {
-    youtube: { format: 'video', quality: 'high' },
-    instagram: { format: 'video', quality: 'high' },
-    tiktok: { format: 'video', quality: 'high' },
-    streamnet: { format: 'video', quality: 'high' },
-    diskwala: { format: 'video', quality: 'high' },
-    sora: { format: 'sora', quality: 'high' }
+// --- GLOBAL VARIABLES & CONFIGURATION ---
+const APP_CONFIG = {
+    name: 'ALLIO PRO',
+    version: '2.0.0',
+    apis: {
+        cobalt: 'https://api.cobalt.tools/api/json',
+        invidious: 'https://vid.puffyan.us/api/v1',
+        youtubeOembed: 'https://www.youtube.com/oembed',
+        corsProxy: 'https://cors-anywhere.herokuapp.com/'
+    },
+    rateLimits: {
+        cobalt: 20, // requests per minute
+        invidious: 100 // requests per minute
+    },
+    cache: {
+        duration: 5 * 60 * 1000, // 5 minutes
+        maxSize: 50 // max cached items
+    }
 };
 
-// API Configuration
-const API_CONFIG = {
-    RAPIDAPI_KEY: 'YOUR_RAPIDAPI_KEY', // Replace with your actual RapidAPI key
-    YOUTUBE_API_KEY: 'YOUR_YOUTUBE_API_KEY', // Replace with your actual YouTube API key
-    BASE_URL: 'https://allio-delta.vercel.app'
+// --- STATE MANAGEMENT ---
+let appState = {
+    currentMode: 'video',
+    currentPlatform: '',
+    currentUrl: '',
+    currentVideoData: {},
+    selectedFormat: 'mp4',
+    selectedQuality: '720p',
+    downloadHistory: [],
+    searchHistory: [],
+    userSettings: {
+        theme: 'dark',
+        language: 'en',
+        defaultQuality: '720p',
+        defaultFormat: 'mp4',
+        autoDownload: false,
+        saveHistory: true
+    },
+    platformSettings: {
+        youtube: { format: 'mp4', quality: '1080p' },
+        instagram: { format: 'mp4', quality: '720p' },
+        tiktok: { format: 'mp4', quality: '720p' },
+        facebook: { format: 'mp4', quality: '720p' },
+        twitter: { format: 'mp4', quality: '720p' },
+        telegram: { format: 'mp4', quality: '720p' },
+        soundcloud: { format: 'mp3', quality: '320' },
+        spotify: { format: 'mp3', quality: '320' }
+    },
+    apiCallCount: {
+        cobalt: 0,
+        invidious: 0,
+        lastReset: Date.now()
+    },
+    cache: new Map()
 };
 
 // --- DOM ELEMENTS ---
-const input = document.getElementById('inputUrl');
-const bottomSheet = document.getElementById('bottomSheet');
-const downloadBtn = document.getElementById('downloadBtn');
-const searchSection = document.querySelector('.hero-container');
-const menu = document.getElementById('menu');
-const langDropdown = document.getElementById('langDropdown');
-const currentLang = document.getElementById('currentLang');
-const downloadCount = document.getElementById('downloadCount');
-const settingsModal = document.getElementById('settingsModal');
-const pageModal = document.getElementById('pageModal');
-const pageModalTitle = document.getElementById('pageModalTitle');
-const pageModalContent = document.getElementById('pageModalContent');
-const notification = document.getElementById('notification');
-const notificationTitle = document.getElementById('notificationTitle');
-const notificationMessage = document.getElementById('notificationMessage');
-const publicLinkSection = document.getElementById('publicLinkSection');
-const publicLinkInput = document.getElementById('publicLinkInput');
-const downloadHistorySection = document.getElementById('downloadHistorySection');
-const historyList = document.getElementById('historyList');
-const loadingSpinner = document.getElementById('loadingSpinner');
+const elements = {
+    inputUrl: document.getElementById('inputUrl'),
+    loadingSpinner: document.getElementById('loadingSpinner'),
+    notification: document.getElementById('notification'),
+    notificationTitle: document.getElementById('notificationTitle'),
+    notificationMessage: document.getElementById('notificationMessage'),
+    downloadCount: document.getElementById('downloadCount'),
+    menu: document.getElementById('menu'),
+    langDropdown: document.getElementById('langDropdown'),
+    currentLang: document.getElementById('currentLang'),
+    searchSection: document.getElementById('searchSection'),
+    videoDetailsSection: document.getElementById('videoDetailsSection'),
+    searchResultsSection: document.getElementById('searchResultsSection'),
+    publicLinkSection: document.getElementById('publicLinkSection'),
+    downloadHistorySection: document.getElementById('downloadHistorySection'),
+    settingsModal: document.getElementById('settingsModal'),
+    pageModal: document.getElementById('pageModal'),
+    qrModal: document.getElementById('qrModal'),
+    bottomSheet: document.getElementById('bottomSheet'),
+    videoThumbnail: document.getElementById('videoThumbnail'),
+    videoTitle: document.getElementById('videoTitle'),
+    videoChannel: document.getElementById('videoChannel'),
+    videoViews: document.getElementById('videoViews'),
+    videoDuration: document.getElementById('videoDuration'),
+    videoUploadDate: document.getElementById('videoUploadDate'),
+    videoDescription: document.getElementById('videoDescription'),
+    formatOptions: document.getElementById('formatOptions'),
+    searchResultsContainer: document.getElementById('searchResultsContainer'),
+    historyList: document.getElementById('historyList'),
+    publicLinkInput: document.getElementById('publicLinkInput'),
+    downloadTitle: document.getElementById('downloadTitle'),
+    downloadPlatform: document.getElementById('downloadPlatform'),
+    downloadFormat: document.getElementById('downloadFormat'),
+    downloadQuality: document.getElementById('downloadQuality'),
+    downloadSize: document.getElementById('downloadSize'),
+    qrCodeContainer: document.getElementById('qrCodeContainer')
+};
 
-// New elements for video details and search results
-const videoDetailsSection = document.getElementById('videoDetailsSection');
-const videoThumbnail = document.getElementById('videoThumbnail');
-const videoTitle = document.getElementById('videoTitle');
-const videoChannel = document.getElementById('videoChannel');
-const videoViews = document.getElementById('videoViews');
-const videoDuration = document.getElementById('videoDuration');
-const videoUploadDate = document.getElementById('videoUploadDate');
-const videoDescription = document.getElementById('videoDescription');
-const formatOptions = document.getElementById('formatOptions');
-const downloadVideoBtn = document.getElementById('downloadVideoBtn');
-const searchResultsSection = document.getElementById('searchResultsSection');
-const searchResultsContainer = document.getElementById('searchResultsContainer');
-
-// Variable to store current video data
-let currentVideoData = {};
-
-// --- FUNCTIONS ---
-
-function toggleMenu() {
-    menu.classList.toggle('show');
-}
-
-// Language functions
-function toggleLangDropdown() {
-    langDropdown.classList.toggle('show');
-}
-
-function changeLanguage(lang) {
-    currentLanguage = lang;
-    const langMap = {
-        'en': 'EN',
-        'hi': 'HI',
-        'es': 'ES'
+// --- UTILITY FUNCTIONS ---
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
     };
-    currentLang.innerText = langMap[lang];
-    langDropdown.classList.remove('show');
-    
-    // Show notification
-    const langNames = {
-        'en': 'English',
-        'hi': 'हिन्दी',
-        'es': 'Español'
-    };
-    showNotification('Language Changed', `Interface switched to ${langNames[lang]}`);
 }
 
-// Paste from clipboard
-async function pasteFromClipboard() {
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function generateUniqueId() {
+    return 'dl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function sanitizeFilename(filename) {
+    return filename.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_').substring(0, 100);
+}
+
+function validateURL(url) {
     try {
-        const text = await navigator.clipboard.readText();
-        input.value = text;
-        showNotification('Pasted', 'URL pasted from clipboard');
-        // Automatically process the pasted URL
-        processInput();
-    } catch (err) {
-        showNotification('Error', 'Could not access clipboard');
+        new URL(url);
+        return true;
+    } catch {
+        return false;
     }
 }
 
-// Set platform for quick access
-function setPlatform(platform) {
-    currentPlatform = platform;
-    const platformUrls = {
-        youtube: 'https://youtube.com',
-        instagram: 'https://instagram.com',
-        tiktok: 'https://tiktok.com',
-        facebook: 'https://facebook.com',
-        twitter: 'https://twitter.com',
-        telegram: 'https://telegram.org',
-        soundcloud: 'https://soundcloud.com',
-        spotify: 'https://spotify.com'
-    };
-    
-    input.placeholder = `Search ${platform.charAt(0).toUpperCase() + platform.slice(1)} or paste URL...`;
-    input.focus();
-    
-    // Highlight selected platform
-    document.querySelectorAll('.platform-item').forEach(item => {
-        item.style.background = 'rgba(255, 255, 255, 0.03)';
-        item.style.border = '1px solid var(--glass-border)';
-    });
-    
-    event.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)';
-    event.currentTarget.style.border = '1px solid rgba(102, 126, 234, 0.5)';
-    
-    showNotification('Platform Selected', `Now searching on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`);
-}
-
-// Enhanced Search Function with API Integration
-async function processInput() {
-    const val = input.value.trim();
-    if(!val) return;
-
-    // Check if it's a URL or search term
-    const isUrl = /^https?:\/\/.+/i.test(val);
-    
-    if (!isUrl) {
-        // Search for song/video using API
-        await searchMedia(val);
-        return;
+function formatViewCount(views) {
+    const num = parseInt(views.toString().replace(/,/g, ''));
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
     }
-
-    // Check if it's a short content (reels, shorts, etc.)
-    isShortContent = checkIfShortContent(val);
-    
-    // Check platform type
-    currentPlatform = detectPlatform(val);
-    currentUrl = val;
-    
-    if (isShortContent) {
-        // Direct download for short content
-        handleShortContentDownload(val);
-        return;
-    }
-    
-    // Load default settings if available
-    loadDefaultSettings();
-    
-    // Fetch video details using API
-    await fetchVideoDetails(val);
+    return views.toString();
 }
 
-// Fetch Video Details with API Integration
-async function fetchVideoDetails(url) {
-    showLoadingSpinner(true);
-    
-    try {
-        // Try to fetch from API first
-        const videoData = await fetchVideoFromAPI(url);
-        
-        // Update video details section
-        updateVideoDetailsSection(videoData);
-        
-        // Show video details section
-        showVideoDetailsSection();
-        
-        // Update download count
-        const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
-        downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
-        
-        showNotification('Video Details Loaded', 'Video information retrieved successfully');
-    } catch (error) {
-        showNotification('Error', 'Failed to fetch video details. Please try again.');
-        console.error('Error fetching video details:', error);
-    } finally {
-        showLoadingSpinner(false);
-    }
-}
-
-// Fetch video from API
-async function fetchVideoFromAPI(url) {
-    const platform = detectPlatform(url);
-    
-    // For YouTube videos, use YouTube API
-    if (platform === 'youtube') {
-        const videoId = extractYouTubeVideoId(url);
-        if (videoId) {
-            return await fetchYouTubeVideoDetails(videoId);
-        }
-    }
-    
-    // For other platforms, use RapidAPI or fallback to mock data
-    return await simulateVideoDetailsAPI(url);
-}
-
-// Extract YouTube video ID from URL
-function extractYouTubeVideoId(url) {
-    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[7].length === 11) ? match[7] : false;
-}
-
-// Fetch YouTube video details using API
-async function fetchYouTubeVideoDetails(videoId) {
-    try {
-        const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails,statistics&key=${API_CONFIG.YOUTUBE_API_KEY}`);
-        const data = await response.json();
-        
-        if (data.items && data.items.length > 0) {
-            const item = data.items[0];
-            return {
-                title: item.snippet.title,
-                channel: item.snippet.channelTitle,
-                views: item.statistics.viewCount,
-                duration: formatDuration(item.contentDetails.duration),
-                uploadDate: item.snippet.publishedAt,
-                description: item.snippet.description,
-                thumbnail: item.snippet.thumbnails.high.url,
-                formats: [
-                    { name: 'MP3 (128kbps)', size: '3.2 MB', format: 'mp3', quality: '128' },
-                    { name: 'MP3 (320kbps)', size: '8.1 MB', format: 'mp3', quality: '320' },
-                    { name: '360p', size: '12.5 MB', format: 'mp4', quality: '360p' },
-                    { name: '720p HD', size: '35.4 MB', format: 'mp4', quality: '720p' },
-                    { name: '1080p Full HD', size: '68.7 MB', format: 'mp4', quality: '1080p' },
-                    { name: '4K Ultra HD', size: '245.8 MB', format: 'mp4', quality: '2160p' }
-                ]
-            };
-        }
-    } catch (error) {
-        console.error('YouTube API error:', error);
-    }
-    
-    // Fallback to mock data
-    return await simulateVideoDetailsAPI(url);
-}
-
-// Format YouTube duration
-function formatDuration(duration) {
-    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-    const hours = parseInt(match[1]) || 0;
-    const minutes = parseInt(match[2]) || 0;
-    const seconds = parseInt(match[3]) || 0;
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
     
     if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Simulate Video Details API (Fallback)
-async function simulateVideoDetailsAPI(url) {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+function formatDate(timestamp) {
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
     
-    // Mock video data based on platform
-    const platform = detectPlatform(url);
-    const mockData = {
-        youtube: {
-            title: 'Amazing Nature Documentary - 4K Ultra HD',
-            channel: 'Nature Explorers',
-            views: '1,245,832',
-            duration: '15:42',
-            uploadDate: '2023-10-15',
-            description: 'Explore the breathtaking beauty of nature in this stunning 4K documentary. Witness incredible landscapes and wildlife from around the world.',
-            thumbnail: 'https://picsum.photos/seed/nature-doc/800/450.jpg',
-            formats: [
-                { name: 'MP3 (128kbps)', size: '14.2 MB', format: 'mp3', quality: '128' },
-                { name: 'MP3 (320kbps)', size: '35.5 MB', format: 'mp3', quality: '320' },
-                { name: '360p', size: '45.8 MB', format: 'mp4', quality: '360p' },
-                { name: '720p HD', size: '125.4 MB', format: 'mp4', quality: '720p' },
-                { name: '1080p Full HD', size: '245.7 MB', format: 'mp4', quality: '1080p' },
-                { name: '4K Ultra HD', size: '1.2 GB', format: 'mp4', quality: '2160p' }
-            ]
-        },
-        instagram: {
-            title: 'Beautiful Sunset at the Beach',
-            channel: 'Travel Diary',
-            views: '124,532',
-            duration: '0:30',
-            uploadDate: '2023-10-20',
-            description: 'Captured this amazing sunset during my vacation. The colors were absolutely stunning!',
-            thumbnail: 'https://picsum.photos/seed/sunset-beach/800/450.jpg',
-            formats: [
-                { name: 'MP3 (128kbps)', size: '0.7 MB', format: 'mp3', quality: '128' },
-                { name: '360p', size: '2.1 MB', format: 'mp4', quality: '360p' },
-                { name: '720p HD', size: '5.8 MB', format: 'mp4', quality: '720p' }
-            ]
-        },
-        tiktok: {
-            title: 'Funny Dance Challenge',
-            channel: 'Dance Master',
-            views: '2,845,123',
-            duration: '0:15',
-            uploadDate: '2023-10-22',
-            description: 'Trying out the latest dance trend! Who else wants to join me?',
-            thumbnail: 'https://picsum.photos/seed/dance-challenge/800/450.jpg',
-            formats: [
-                { name: 'MP3 (128kbps)', size: '0.4 MB', format: 'mp3', quality: '128' },
-                { name: '360p (No Watermark)', size: '1.2 MB', format: 'mp4', quality: '360p' },
-                { name: '720p HD (No Watermark)', size: '3.5 MB', format: 'mp4', quality: '720p' }
-            ]
-        }
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)} days ago`;
+    
+    return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function estimateFileSize(duration, quality, format) {
+    const minutes = duration / 60;
+    const sizeMap = {
+        '2160p': { mp4: 12, webm: 10 },
+        '1080p': { mp4: 6, webm: 5 },
+        '720p': { mp4: 3, webm: 2.5 },
+        '480p': { mp4: 1.5, webm: 1.2 },
+        '360p': { mp4: 0.8, webm: 0.6 },
+        '144p': { mp4: 0.3, webm: 0.2 },
+        '320': { mp3: 2.4, m4a: 2.2, wav: 10 },
+        '256': { mp3: 1.9, m4a: 1.8, wav: 8 },
+        '192': { mp3: 1.4, m4a: 1.3, wav: 6 },
+        '128': { mp3: 1, m4a: 0.9, wav: 4 }
     };
     
-    // Return mock data for the detected platform or default to YouTube
-    return mockData[platform] || mockData.youtube;
+    const sizePerMinute = sizeMap[quality]?.[format] || 1;
+    const estimatedBytes = minutes * sizePerMinute * 1024 * 1024;
+    return formatFileSize(estimatedBytes);
 }
 
-// Update Video Details Section
-function updateVideoDetailsSection(videoData) {
-    videoThumbnail.src = videoData.thumbnail;
-    videoTitle.textContent = videoData.title;
-    videoChannel.textContent = videoData.channel;
-    videoViews.textContent = formatViewCount(videoData.views);
-    videoDuration.textContent = videoData.duration;
-    videoUploadDate.textContent = formatDate(videoData.uploadDate);
-    videoDescription.textContent = videoData.description;
-    
-    // Clear existing format options
-    formatOptions.innerHTML = '';
-    
-    // Add format options
-    videoData.formats.forEach((format, index) => {
-        const formatOption = document.createElement('div');
-        formatOption.className = 'format-option';
-        formatOption.onclick = () => selectFormat(formatOption, format);
-        
-        formatOption.innerHTML = `
-            <div class="format-info">
-                <span class="format-name">${format.name}</span>
-                <span class="format-size">${format.size}</span>
-            </div>
-            <div class="format-radio">
-                <input type="radio" name="video-format" value="${format.format}" ${index === 0 ? 'checked' : ''}>
-            </div>
-        `;
-        
-        formatOptions.appendChild(formatOption);
-    });
-    
-    // Store video data for download
-    currentVideoData = videoData;
+// --- CACHE MANAGEMENT ---
+function getCacheKey(url, options = {}) {
+    return `${url}_${JSON.stringify(options)}`;
 }
 
-// Select Format
-function selectFormat(element, format) {
-    // Remove selected class from all options
-    document.querySelectorAll('.format-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    
-    // Add selected class to clicked option
-    element.classList.add('selected');
-    
-    // Update selected format
-    selectedFormat = format.format;
-    selectedQuality = format.quality;
-    
-    // Enable download button
-    downloadVideoBtn.disabled = false;
-}
-
-// Show Video Details Section
-function showVideoDetailsSection() {
-    // Hide other sections
-    searchSection.style.display = 'none';
-    document.querySelector('.seo-content').style.display = 'none';
-    document.querySelector('.ad-banner').style.display = 'none';
-    publicLinkSection.classList.add('hidden');
-    downloadHistorySection.classList.add('hidden');
-    searchResultsSection.classList.add('hidden');
-    
-    // Show video details section
-    videoDetailsSection.classList.remove('hidden');
-}
-
-// Close Video Details Section
-function closeVideoDetails() {
-    videoDetailsSection.classList.add('hidden');
-    searchSection.style.display = 'block';
-    document.querySelector('.seo-content').style.display = 'block';
-    document.querySelector('.ad-banner').style.display = 'block';
-}
-
-// Search Media Function with API Integration
-async function searchMedia(query) {
-    showLoadingSpinner(true);
-    
-    try {
-        // Try to fetch from API first
-        const searchResults = await searchMediaFromAPI(query);
-        
-        // Update search results section
-        updateSearchResultsSection(searchResults, query);
-        
-        // Show search results section
-        showSearchResultsSection();
-        
-        showNotification('Search Complete', `Found ${searchResults.length} results for "${query}"`);
-    } catch (error) {
-        showNotification('Error', 'Failed to search. Please try again.');
-        console.error('Error searching media:', error);
-    } finally {
-        showLoadingSpinner(false);
+function getCachedData(key) {
+    const cached = appState.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < APP_CONFIG.cache.duration) {
+        return cached.data;
     }
+    appState.cache.delete(key);
+    return null;
 }
 
-// Search media from API
-async function searchMediaFromAPI(query) {
-    try {
-        // For YouTube search, use YouTube API
-        const response = await fetch(`https://www.googleapis.com/youtube/v3/search?q=${encodeURIComponent(query)}&part=snippet&type=video&maxResults=10&key=${API_CONFIG.YOUTUBE_API_KEY}`);
-        const data = await response.json();
-        
-        if (data.items && data.items.length > 0) {
-            return data.items.map(item => ({
-                title: item.snippet.title,
-                channel: item.snippet.channelTitle,
-                views: 'N/A',
-                duration: 'N/A',
-                thumbnail: item.snippet.thumbnails.medium.url,
-                platform: 'YouTube',
-                videoId: item.id.videoId
-            }));
-        }
-    } catch (error) {
-        console.error('Search API error:', error);
+function setCachedData(key, data) {
+    if (appState.cache.size >= APP_CONFIG.cache.maxSize) {
+        const firstKey = appState.cache.keys().next().value;
+        appState.cache.delete(firstKey);
     }
-    
-    // Fallback to mock data
-    return await simulateSearchAPI(query);
-}
-
-// Simulate Search API (Fallback)
-async function simulateSearchAPI(query) {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mock search results
-    return [
-        {
-            title: `${query} - Official Video`,
-            channel: 'Music Channel',
-            views: '12,456,789',
-            duration: '3:45',
-            thumbnail: `https://picsum.photos/seed/${query}-1/300/180.jpg`,
-            platform: 'YouTube'
-        },
-        {
-            title: `${query} - Audio Version`,
-            channel: 'Audio Artist',
-            views: '800,000',
-            duration: '3:45',
-            thumbnail: `https://picsum.photos/seed/${query}-2/300/180.jpg`,
-            platform: 'Spotify'
-        },
-        {
-            title: `${query} - TikTok Remix`,
-            channel: 'TikTok Creator',
-            views: '5,200,000',
-            duration: '0:45',
-            thumbnail: `https://picsum.photos/seed/${query}-3/300/180.jpg`,
-            platform: 'TikTok'
-        },
-        {
-            title: `${query} - Live Performance`,
-            channel: 'Live Concerts',
-            views: '2,400,000',
-            duration: '5:20',
-            thumbnail: `https://picsum.photos/seed/${query}-4/300/180.jpg`,
-            platform: 'YouTube'
-        },
-        {
-            title: `${query} - Cover Version`,
-            channel: 'Cover Artist',
-            views: '450,000',
-            duration: '2:30',
-            thumbnail: `https://picsum.photos/seed/${query}-5/300/180.jpg`,
-            platform: 'Instagram'
-        },
-        {
-            title: `${query} - Lyric Video`,
-            channel: 'Lyric Channel',
-            views: '3,100,000',
-            duration: '3:45',
-            thumbnail: `https://picsum.photos/seed/${query}-6/300/180.jpg`,
-            platform: 'YouTube'
-        }
-    ];
-}
-
-// Update Search Results Section
-function updateSearchResultsSection(searchResults, query) {
-    // Clear existing results
-    searchResultsContainer.innerHTML = '';
-    
-    // Add search results
-    searchResults.forEach(result => {
-        const resultItem = document.createElement('div');
-        resultItem.className = 'search-result-item';
-        
-        resultItem.innerHTML = `
-            <div class="search-result-thumbnail">
-                <img src="${result.thumbnail}" alt="${result.title}">
-            </div>
-            <div class="search-result-info">
-                <div class="search-result-title">${result.title}</div>
-                <div class="search-result-meta">
-                    <span><i class="fas fa-user"></i> ${result.channel}</span>
-                    <span><i class="fas fa-eye"></i> ${formatViewCount(result.views)}</span>
-                    <span><i class="fas fa-clock"></i> ${result.duration}</span>
-                    <span><i class="fas fa-globe"></i> ${result.platform}</span>
-                </div>
-            </div>
-            <div class="search-result-actions">
-                <button class="search-result-btn" onclick="downloadFromSearchResult('${result.title}', '${result.platform}', '${result.videoId || ''}')">
-                    <i class="fas fa-download"></i> Download
-                </button>
-            </div>
-        `;
-        
-        searchResultsContainer.appendChild(resultItem);
+    appState.cache.set(key, {
+        data,
+        timestamp: Date.now()
     });
 }
 
-// Show Search Results Section
-function showSearchResultsSection() {
-    // Hide other sections
-    searchSection.style.display = 'none';
-    document.querySelector('.seo-content').style.display = 'none';
-    document.querySelector('.ad-banner').style.display = 'none';
-    publicLinkSection.classList.add('hidden');
-    downloadHistorySection.classList.add('hidden');
-    videoDetailsSection.classList.add('hidden');
+// --- RATE LIMITING ---
+function checkRateLimit(api) {
+    const now = Date.now();
+    const timeDiff = now - appState.apiCallCount.lastReset;
     
-    // Show search results section
-    searchResultsSection.classList.remove('hidden');
-}
-
-// Close Search Results Section
-function closeSearchResults() {
-    searchResultsSection.classList.add('hidden');
-    searchSection.style.display = 'block';
-    document.querySelector('.seo-content').style.display = 'block';
-    document.querySelector('.ad-banner').style.display = 'block';
-}
-
-// Download from Search Result
-function downloadFromSearchResult(title, platform, videoId) {
-    // If we have a YouTube video ID, construct the URL
-    if (platform === 'YouTube' && videoId) {
-        currentUrl = `https://youtube.com/watch?v=${videoId}`;
-    } else {
-        currentUrl = 'https://example.com';
+    if (timeDiff >= 60000) { // Reset every minute
+        appState.apiCallCount[api] = 0;
+        appState.apiCallCount.lastReset = now;
     }
     
-    currentTitle = title;
-    currentPlatform = platform;
-    
-    // Fetch video details
-    fetchVideoDetails(currentUrl);
+    return appState.apiCallCount[api] < APP_CONFIG.rateLimits[api];
 }
 
-// Check if URL is for short content
-function checkIfShortContent(url) {
-    const shortContentPatterns = [
-        /youtube\.com\/shorts/,
-        /instagram\.com\/reel/,
-        /tiktok\.com\/@.*\/video/,
-        /facebook\.com\/reel/,
-        /twitter\.com\/.*\/status/
-    ];
-    
-    return shortContentPatterns.some(pattern => pattern.test(url));
+function incrementApiCall(api) {
+    appState.apiCallCount[api]++;
 }
 
-// Detect platform from URL
+// --- PLATFORM DETECTION ---
 function detectPlatform(url) {
     const platformPatterns = {
         youtube: /youtube\.com|youtu\.be/,
@@ -612,10 +244,12 @@ function detectPlatform(url) {
         facebook: /facebook\.com|fb\.watch/,
         twitter: /twitter\.com|x\.com/,
         telegram: /t\.me|telegram\.me/,
-        terabox: /terabox\.com|1024tera\.com/,
-        streamnet: /streamnet\./,
-        diskwala: /diskwala\./,
-        sora: /openai\.com\/sora|sora\.ai|sora2/
+        reddit: /reddit\.com/,
+        pinterest: /pinterest\.com/,
+        vimeo: /vimeo\.com/,
+        dailymotion: /dailymotion\.com/,
+        soundcloud: /soundcloud\.com/,
+        twitch: /twitch\.tv/
     };
     
     for (const [platform, pattern] of Object.entries(platformPatterns)) {
@@ -627,241 +261,556 @@ function detectPlatform(url) {
     return 'unknown';
 }
 
-// Show bottom sheet modal
-function showBottomSheet() {
-    bottomSheet.classList.add('show');
+// --- URL PARSING ---
+function extractYouTubeVideoId(url) {
+    const patterns = [
+        /youtube\.com\/watch\?v=([^&]+)/,
+        /youtu\.be\/([^?]+)/,
+        /youtube\.com\/embed\/([^?]+)/,
+        /youtube\.com\/shorts\/([^?]+)/
+    ];
     
-    // Update download count
-    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
-    downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
-    
-    // Enable download button by default since Classic MP3 is pre-selected
-    downloadBtn.disabled = false;
-}
-
-// Close bottom sheet modal
-function closeBottomSheet() {
-    bottomSheet.classList.remove('show');
-}
-
-// Handle format selection
-document.querySelectorAll('input[name="format"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        selectedFormat = this.value;
-        downloadBtn.disabled = false;
-    });
-});
-
-// Handle short content download
-function handleShortContentDownload(url) {
-    // Update download count
-    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, '')) + 1;
-    downloadCount.innerText = `${count.toLocaleString()} Downloads Today`;
-    
-    // Generate title
-    currentTitle = `Short Content - ${currentPlatform}`;
-    
-    // Generate public link
-    generatePublicLinkForShortContent(url);
-    
-    // Show notification
-    showNotification('Download Ready', 'Short content link generated successfully!');
-}
-
-// Generate public link for short content
-function generatePublicLinkForShortContent(url) {
-    // Create a unique ID for this download
-    publicLinkId = generateUniqueId();
-    
-    // Create download data
-    const downloadData = {
-        id: publicLinkId,
-        url: url,
-        title: currentTitle,
-        platform: currentPlatform,
-        format: 'video',
-        quality: 'high',
-        isShortContent: true,
-        timestamp: new Date().toISOString()
-    };
-    
-    // Store in localStorage (simulate backend)
-    localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(downloadData));
-    
-    // Show public link section
-    showPublicLinkSection(downloadData);
-    
-    // Add to history
-    addToDownloadHistory(downloadData);
-}
-
-// Generate public link with API Integration
-async function generatePublicLink() {
-    if (!selectedFormat) {
-        showNotification('Error', 'Please select a format');
-        return;
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
     }
     
-    // Close video details section
-    closeVideoDetails();
+    return null;
+}
+
+function extractInstagramShortcode(url) {
+    const match = url.match(/instagram\.com\/(?:p|reel)\/([^?]+)/);
+    return match ? match[1] : null;
+}
+
+function extractTikTokId(url) {
+    const match = url.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/);
+    return match ? match[1] : null;
+}
+
+// --- API INTEGRATION ---
+async function fetchFromCobalt(url, options = {}) {
+    if (!checkRateLimit('cobalt')) {
+        throw new Error('Rate limit exceeded. Please wait and try again.');
+    }
     
-    // Create a unique ID for this download
-    publicLinkId = generateUniqueId();
+    incrementApiCall('cobalt');
     
-    // Generate title based on platform
-    currentTitle = currentVideoData.title;
+    const requestBody = {
+        url: url,
+        vCodec: options.vCodec || 'h264',
+        vQuality: options.vQuality || '720',
+        aFormat: options.aFormat || 'mp3',
+        filenamePattern: options.filenamePattern || 'pretty',
+        isAudioOnly: options.isAudioOnly || false,
+        isTTFullAudio: options.isTTFullAudio || false,
+        isAudioMuted: options.isAudioMuted || false,
+        dubLang: options.dubLang || false,
+        disableMetadata: options.disableMetadata || false
+    };
     
     try {
-        // Try to get actual download link from API
-        const downloadLink = await getDownloadLink(currentUrl, selectedFormat, selectedQuality);
+        const response = await fetch(APP_CONFIG.apis.cobalt, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
         
-        // Create download data
-        const downloadData = {
-            id: publicLinkId,
-            url: currentUrl,
-            title: currentTitle,
-            platform: currentPlatform,
-            format: selectedFormat,
-            quality: selectedQuality,
-            downloadLink: downloadLink,
-            isShortContent: false,
-            timestamp: new Date().toISOString()
-        };
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
-        // Store in localStorage (simulate backend)
-        localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(downloadData));
+        const data = await response.json();
         
-        // Show public link section
-        showPublicLinkSection(downloadData);
+        if (data.status === 'error') {
+            throw new Error(data.text || 'Unknown error occurred');
+        }
         
-        // Add to history
-        addToDownloadHistory(downloadData);
-        
-        showNotification('Link Generated', 'Your download link is ready!');
+        return data;
     } catch (error) {
-        showNotification('Error', 'Failed to generate download link');
-        console.error('Error generating download link:', error);
+        console.error('Cobalt API error:', error);
+        throw error;
     }
 }
 
-// Get download link from API
-async function getDownloadLink(url, format, quality) {
-    // This would integrate with a real API like RapidAPI
-    // For now, return a mock download link
-    return `${API_CONFIG.BASE_URL}/api/download?url=${encodeURIComponent(url)}&format=${format}&quality=${quality}`;
-}
-
-// Generate unique ID
-function generateUniqueId() {
-    return 'dl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
-// Show public link section
-function showPublicLinkSection(downloadData) {
-    // Hide other sections
-    searchSection.style.display = 'none';
-    document.querySelector('.seo-content').style.display = 'none';
-    document.querySelector('.ad-banner').style.display = 'none';
-    downloadHistorySection.classList.add('hidden');
-    videoDetailsSection.classList.add('hidden');
-    searchResultsSection.classList.add('hidden');
+async function searchYouTube(query, options = {}) {
+    if (!checkRateLimit('invidious')) {
+        throw new Error('Search rate limit exceeded. Please wait and try again.');
+    }
     
-    // Show public link section
-    publicLinkSection.classList.remove('hidden');
+    incrementApiCall('invidious');
     
-    // Update public link input
-    const publicLink = `${window.location.origin}/download/${downloadData.id}`;
-    publicLinkInput.value = publicLink;
+    const params = new URLSearchParams({
+        q: query,
+        type: 'video',
+        page: options.page || 1,
+        sort_by: options.sortBy || 'relevance'
+    });
     
-    // Update download info
-    document.getElementById('downloadTitle').textContent = downloadData.title;
-    document.getElementById('downloadPlatform').textContent = downloadData.platform.charAt(0).toUpperCase() + downloadData.platform.slice(1);
-    document.getElementById('downloadFormat').textContent = downloadData.format.charAt(0).toUpperCase() + downloadData.format.slice(1);
-    document.getElementById('downloadQuality').textContent = downloadData.quality.charAt(0).toUpperCase() + downloadData.quality.slice(1);
+    if (options.date) params.append('date', options.date);
+    if (options.duration) params.append('duration', options.duration);
     
-    // Calculate and display file size
-    const fileSize = calculateFileSize(downloadData.format, downloadData.quality);
-    document.getElementById('downloadSize').textContent = fileSize;
-}
-
-// Calculate file size based on format and quality
-function calculateFileSize(format, quality) {
-    // Mock file size calculation based on format and quality
-    const sizeMap = {
-        'mp3': {
-            '128': '3.2 MB',
-            '320': '8.1 MB'
-        },
-        'mp4': {
-            '360p': '12.5 MB',
-            '720p': '35.4 MB',
-            '1080p': '68.7 MB',
-            '2160p': '245.8 MB'
-        },
-        'txt': {
-            'prompt': '0.1 MB'
+    try {
+        const response = await fetch(`${APP_CONFIG.apis.invidious}/search?${params}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    };
-    
-    return sizeMap[format]?.[quality] || 'Unknown size';
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Invidious API error:', error);
+        throw error;
+    }
 }
 
-// Copy public link
-function copyPublicLink() {
-    publicLinkInput.select();
-    document.execCommand('copy');
-    showNotification('Link Copied', 'Download link copied to clipboard!');
+async function fetchYouTubeMetadata(videoId) {
+    const cacheKey = `youtube_meta_${videoId}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+    
+    try {
+        const params = new URLSearchParams({
+            url: `https://www.youtube.com/watch?v=${videoId}`,
+            format: 'json'
+        });
+        
+        const response = await fetch(`${APP_CONFIG.apis.youtubeOembed}?${params}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setCachedData(cacheKey, data);
+        return data;
+    } catch (error) {
+        console.error('YouTube oEmbed error:', error);
+        throw error;
+    }
 }
 
-// Generate new link
-function generateNewLink() {
-    // Generate new ID
-    publicLinkId = generateUniqueId();
-    
-    // Get existing download data
-    const existingData = JSON.parse(localStorage.getItem(`download_${publicLinkId}`) || '{}');
-    
-    // Update with new ID
-    existingData.id = publicLinkId;
-    existingData.timestamp = new Date().toISOString();
-    
-    // Store new data
-    localStorage.setItem(`download_${publicLinkId}`, JSON.stringify(existingData));
-    
-    // Update public link
-    const publicLink = `${window.location.origin}/download/${publicLinkId}`;
-    publicLinkInput.value = publicLink;
-    
-    showNotification('New Link Generated', 'A new download link has been created!');
+// --- UI FUNCTIONS ---
+function showLoadingSpinner(show = true) {
+    if (show) {
+        elements.loadingSpinner.classList.add('show');
+    } else {
+        elements.loadingSpinner.classList.remove('show');
+    }
 }
 
-// Download from public link
-function downloadFromPublicLink() {
-    // Get download data
-    const downloadData = JSON.parse(localStorage.getItem(`download_${publicLinkId}`));
+function showNotification(title, message, type = 'success') {
+    elements.notificationTitle.textContent = title;
+    elements.notificationMessage.textContent = message;
+    elements.notification.classList.add('show');
     
-    if (!downloadData) {
-        showNotification('Error', 'Download link expired or invalid');
+    // Update icon based on type
+    const icon = elements.notification.querySelector('.notification-icon i');
+    icon.className = type === 'success' ? 'fas fa-check' : 
+                   type === 'error' ? 'fas fa-exclamation-triangle' : 
+                   'fas fa-info-circle';
+    
+    setTimeout(() => {
+        elements.notification.classList.remove('show');
+    }, 3000);
+}
+
+function hideSection(section) {
+    section.classList.add('hidden');
+}
+
+function showSection(section) {
+    section.classList.remove('hidden');
+}
+
+function updateDownloadCount() {
+    const count = parseInt(elements.downloadCount.textContent.replace(/[^0-9]/g, '')) + 1;
+    elements.downloadCount.textContent = `${count.toLocaleString()} Downloads Today`;
+}
+
+// --- CORE FUNCTIONS ---
+async function processInput() {
+    const input = elements.inputUrl.value.trim();
+    if (!input) {
+        showNotification('Error', 'Please enter a URL or search term', 'error');
         return;
     }
     
-    // If we have a direct download link, trigger download
-    if (downloadData.downloadLink) {
-        triggerDownload(downloadData.downloadLink, downloadData.title);
-    } else {
-        // Simulate download
-        simulateDownload(downloadData.format, downloadData.title);
-    }
+    const isUrl = /^https?:\/\/.+/i.test(input);
     
-    // Update history with download status
-    updateDownloadHistoryStatus(publicLinkId, 'completed');
+    if (isUrl) {
+        if (!validateURL(input)) {
+            showNotification('Error', 'Please enter a valid URL', 'error');
+            return;
+        }
+        
+        appState.currentUrl = input;
+        appState.currentPlatform = detectPlatform(input);
+        
+        if (appState.currentPlatform === 'unknown') {
+            showNotification('Error', 'This platform is not supported yet', 'error');
+            return;
+        }
+        
+        await fetchVideoDetails(input);
+    } else {
+        await searchVideos(input);
+    }
 }
 
-// Trigger actual file download
+async function fetchVideoDetails(url) {
+    showLoadingSpinner(true);
+    
+    try {
+        const platform = detectPlatform(url);
+        let videoData = {};
+        
+        if (platform === 'youtube') {
+            const videoId = extractYouTubeVideoId(url);
+            if (!videoId) {
+                throw new Error('Invalid YouTube URL');
+            }
+            
+            const metadata = await fetchYouTubeMetadata(videoId);
+            videoData = {
+                id: videoId,
+                title: metadata.title,
+                author: metadata.author_name,
+                thumbnailUrl: metadata.thumbnail_url,
+                platform: 'youtube',
+                url: url
+            };
+        } else {
+            // For other platforms, use Cobalt to get basic info
+            const cobaltData = await fetchFromCobalt(url, { filenamePattern: 'basic' });
+            videoData = {
+                title: cobaltData.filename || 'Unknown Title',
+                author: 'Unknown',
+                thumbnailUrl: '',
+                platform: platform,
+                url: url
+            };
+        }
+        
+        appState.currentVideoData = videoData;
+        displayVideoDetails(videoData);
+        showSection(elements.videoDetailsSection);
+        hideSection(elements.searchSection);
+        hideSection(elements.searchResultsSection);
+        hideSection(elements.publicLinkSection);
+        hideSection(elements.downloadHistorySection);
+        
+        showNotification('Success', 'Video details loaded successfully');
+    } catch (error) {
+        console.error('Error fetching video details:', error);
+        showNotification('Error', error.message || 'Failed to fetch video details', 'error');
+    } finally {
+        showLoadingSpinner(false);
+    }
+}
+
+async function searchVideos(query) {
+    showLoadingSpinner(true);
+    
+    try {
+        const results = await searchYouTube(query);
+        displaySearchResults(results);
+        showSection(elements.searchResultsSection);
+        hideSection(elements.searchSection);
+        hideSection(elements.videoDetailsSection);
+        hideSection(elements.publicLinkSection);
+        hideSection(elements.downloadHistorySection);
+        
+        // Add to search history
+        appState.searchHistory.unshift({
+            query,
+            timestamp: Date.now(),
+            resultsCount: results.length
+        });
+        
+        showNotification('Success', `Found ${results.length} results for "${query}"`);
+    } catch (error) {
+        console.error('Error searching videos:', error);
+        showNotification('Error', error.message || 'Search failed', 'error');
+    } finally {
+        showLoadingSpinner(false);
+    }
+}
+
+function displayVideoDetails(videoData) {
+    elements.videoThumbnail.src = videoData.thumbnailUrl || 'https://picsum.photos/seed/video/800/450.jpg';
+    elements.videoTitle.textContent = videoData.title;
+    elements.videoChannel.textContent = videoData.author;
+    elements.videoViews.textContent = 'N/A'; // Would need additional API call
+    elements.videoDuration.textContent = 'N/A'; // Would need additional API call
+    elements.videoUploadDate.textContent = 'N/A'; // Would need additional API call
+    elements.videoDescription.textContent = 'Loading description...';
+    
+    // Generate format options
+    generateFormatOptions(videoData.platform);
+}
+
+function generateFormatOptions(platform) {
+    elements.formatOptions.innerHTML = '';
+    
+    const formatMap = {
+        youtube: [
+            { format: 'mp4', quality: '2160p', label: '4K Ultra HD', size: '245.8 MB' },
+            { format: 'mp4', quality: '1080p', label: '1080p Full HD', size: '68.7 MB' },
+            { format: 'mp4', quality: '720p', label: '720p HD', size: '35.4 MB' },
+            { format: 'mp4', quality: '480p', label: '480p SD', size: '18.2 MB' },
+            { format: 'mp4', quality: '360p', label: '360p', size: '9.8 MB' },
+            { format: 'mp3', quality: '320', label: 'MP3 320kbps', size: '8.1 MB' },
+            { format: 'mp3', quality: '128', label: 'MP3 128kbps', size: '3.2 MB' }
+        ],
+        instagram: [
+            { format: 'mp4', quality: '1080p', label: '1080p HD', size: '25.4 MB' },
+            { format: 'mp4', quality: '720p', label: '720p HD', size: '15.8 MB' },
+            { format: 'mp4', quality: '480p', label: '480p SD', size: '8.2 MB' },
+            { format: 'mp3', quality: '320', label: 'MP3 320kbps', size: '4.5 MB' }
+        ],
+        tiktok: [
+            { format: 'mp4', quality: '1080p', label: '1080p HD (No Watermark)', size: '12.5 MB' },
+            { format: 'mp4', quality: '720p', label: '720p HD (No Watermark)', size: '7.8 MB' },
+            { format: 'mp3', quality: '320', label: 'MP3 320kbps', size: '2.8 MB' }
+        ],
+        default: [
+            { format: 'mp4', quality: '720p', label: '720p HD', size: '20.5 MB' },
+            { format: 'mp4', quality: '480p', label: '480p SD', size: '12.3 MB' },
+            { format: 'mp3', quality: '320', label: 'MP3 320kbps', size: '5.2 MB' }
+        ]
+    };
+    
+    const formats = formatMap[platform] || formatMap.default;
+    
+    formats.forEach((format, index) => {
+        const formatOption = document.createElement('div');
+        formatOption.className = 'format-option';
+        formatOption.onclick = () => selectFormat(formatOption, format);
+        
+        formatOption.innerHTML = `
+            <div class="format-info">
+                <span class="format-name">${format.label}</span>
+                <span class="format-size">${format.size}</span>
+            </div>
+            <div class="format-radio">
+                <input type="radio" name="video-format" value="${format.format}-${format.quality}" ${index === 0 ? 'checked' : ''}>
+            </div>
+        `;
+        
+        elements.formatOptions.appendChild(formatOption);
+    });
+}
+
+function selectFormat(element, format) {
+    // Remove selected class from all options
+    document.querySelectorAll('.format-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked option
+    element.classList.add('selected');
+    
+    // Update selected format
+    appState.selectedFormat = format.format;
+    appState.selectedQuality = format.quality;
+    
+    // Enable download button
+    const downloadBtn = document.getElementById('downloadVideoBtn');
+    if (downloadBtn) {
+        downloadBtn.disabled = false;
+    }
+}
+
+function displaySearchResults(results) {
+    elements.searchResultsContainer.innerHTML = '';
+    
+    if (results.length === 0) {
+        elements.searchResultsContainer.innerHTML = `
+            <div class="empty-history">
+                <i class="fas fa-search"></i>
+                <p>No results found</p>
+            </div>
+        `;
+        return;
+    }
+    
+    results.forEach(result => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'search-result-item';
+        resultItem.onclick = () => selectSearchResult(result);
+        
+        const thumbnail = result.videoThumbnails?.find(t => t.quality === 'medium')?.url || 
+                         result.videoThumbnails?.[0]?.url || 
+                         'https://picsum.photos/seed/' + result.videoId + '/300/180.jpg';
+        
+        resultItem.innerHTML = `
+            <div class="search-result-thumbnail">
+                <img src="${thumbnail}" alt="${result.title}">
+            </div>
+            <div class="search-result-info">
+                <div class="search-result-title">${result.title}</div>
+                <div class="search-result-meta">
+                    <span><i class="fas fa-user"></i> ${result.author}</span>
+                    <span><i class="fas fa-eye"></i> ${formatViewCount(result.viewCount || 0)}</span>
+                    <span><i class="fas fa-clock"></i> ${formatDuration(result.lengthSeconds || 0)}</span>
+                    <span><i class="fas fa-globe"></i> YouTube</span>
+                </div>
+            </div>
+            <div class="search-result-actions">
+                <button class="search-result-btn" onclick="event.stopPropagation(); downloadFromSearchResult('${result.videoId}')">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+        `;
+        
+        elements.searchResultsContainer.appendChild(resultItem);
+    });
+}
+
+async function selectSearchResult(result) {
+    appState.currentVideoData = {
+        id: result.videoId,
+        title: result.title,
+        author: result.author,
+        thumbnailUrl: result.videoThumbnails?.[0]?.url,
+        platform: 'youtube',
+        url: `https://www.youtube.com/watch?v=${result.videoId}`
+    };
+    
+    displayVideoDetails(appState.currentVideoData);
+    showSection(elements.videoDetailsSection);
+    hideSection(elements.searchResultsSection);
+}
+
+async function downloadFromSearchResult(videoId) {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    await fetchVideoDetails(url);
+}
+
+async function generateDownloadLink() {
+    if (!appState.currentVideoData.url) {
+        showNotification('Error', 'No video selected', 'error');
+        return;
+    }
+    
+    showLoadingSpinner(true);
+    
+    try {
+        const isAudio = appState.selectedFormat === 'mp3';
+        const quality = appState.selectedQuality;
+        
+        const options = {
+            vQuality: quality.replace('p', ''),
+            aFormat: 'mp3',
+            isAudioOnly: isAudio,
+            filenamePattern: 'pretty'
+        };
+        
+        const downloadData = await fetchFromCobalt(appState.currentVideoData.url, options);
+        
+        if (downloadData.status === 'picker') {
+            // Handle multiple videos (playlists, carousels)
+            handleVideoPicker(downloadData);
+        } else {
+            // Direct download
+            const downloadInfo = {
+                id: generateUniqueId(),
+                url: appState.currentVideoData.url,
+                title: appState.currentVideoData.title,
+                platform: appState.currentVideoData.platform,
+                format: isAudio ? 'mp3' : 'mp4',
+                quality: quality,
+                downloadUrl: downloadData.url,
+                filename: downloadData.filename,
+                timestamp: Date.now()
+            };
+            
+            displayPublicLink(downloadInfo);
+            saveToHistory(downloadInfo);
+            updateDownloadCount();
+            
+            showNotification('Success', 'Download link generated successfully');
+        }
+    } catch (error) {
+        console.error('Error generating download link:', error);
+        showNotification('Error', error.message || 'Failed to generate download link', 'error');
+    } finally {
+        showLoadingSpinner(false);
+    }
+}
+
+function handleVideoPicker(pickerData) {
+    // Show modal to select video from picker
+    showPage('videoPicker');
+    
+    const container = document.getElementById('pageModalContent');
+    container.innerHTML = `
+        <div class="video-picker-container">
+            <h3>Select Video to Download</h3>
+            <div class="picker-videos">
+                ${pickerData.picker.map((video, index) => `
+                    <div class="picker-video" onclick="selectPickerVideo(${index})">
+                        <img src="${video.thumb}" alt="Video ${index + 1}">
+                        <span>Video ${index + 1}</span>
+                    </div>
+                `).join('')}
+            </div>
+            ${pickerData.audio ? `
+                <div class="picker-audio">
+                    <h4>Or download audio only:</h4>
+                    <button class="btn-primary" onclick="downloadPickerAudio()">
+                        <i class="fas fa-music"></i> Download Audio
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    // Store picker data globally
+    window.currentPickerData = pickerData;
+}
+
+function selectPickerVideo(index) {
+    const video = window.currentPickerData.picker[index];
+    appState.currentVideoData.url = video.url;
+    generateDownloadLink();
+    closePageModal();
+}
+
+function downloadPickerAudio() {
+    appState.currentVideoData.url = window.currentPickerData.audio;
+    appState.selectedFormat = 'mp3';
+    generateDownloadLink();
+    closePageModal();
+}
+
+function displayPublicLink(downloadInfo) {
+    const publicLink = `${window.location.origin}/download/${downloadInfo.id}`;
+    
+    elements.publicLinkInput.value = publicLink;
+    elements.downloadTitle.textContent = downloadInfo.title;
+    elements.downloadPlatform.textContent = downloadInfo.platform.charAt(0).toUpperCase() + downloadInfo.platform.slice(1);
+    elements.downloadFormat.textContent = downloadInfo.format.toUpperCase();
+    elements.downloadQuality.textContent = downloadInfo.quality;
+    elements.downloadSize.textContent = estimateFileSize(180, downloadInfo.quality, downloadInfo.format);
+    
+    showSection(elements.publicLinkSection);
+    hideSection(elements.videoDetailsSection);
+    hideSection(elements.searchResultsSection);
+    hideSection(elements.searchSection);
+    hideSection(elements.downloadHistorySection);
+}
+
 function triggerDownload(url, filename) {
     const a = document.createElement('a');
     a.href = url;
     a.download = filename || 'download';
+    a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -869,89 +818,32 @@ function triggerDownload(url, filename) {
     showNotification('Download Started', 'Your download has started');
 }
 
-// Simulate download process
-function simulateDownload(format, title) {
-    let formatName = format;
+// --- HISTORY MANAGEMENT ---
+function saveToHistory(downloadInfo) {
+    if (!appState.userSettings.saveHistory) return;
     
-    if (format === 'classic-mp3') formatName = 'Classic MP3';
-    else if (format === 'fast-mp3') formatName = 'Fast MP3';
-    else if (format === 'fast-360p') formatName = 'Fast (360p)';
-    else if (format === 'high-720p') formatName = 'High quality (720p)';
-    else if (format === '1080p-hd') formatName = '1080p HD';
-    else if (format === 'direct-short') formatName = 'Short Content';
+    appState.downloadHistory.unshift(downloadInfo);
     
-    // Show notification
-    showNotification('Download Started', `Downloading ${formatName}...`);
-    
-    // Simulate download progress
-    setTimeout(() => {
-        showNotification('Download Complete', `${title} downloaded successfully!`);
-    }, 2000);
-}
-
-// Add to download history
-function addToDownloadHistory(downloadData) {
-    // Load existing history
-    const history = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
-    
-    // Add new item
-    history.unshift({
-        ...downloadData,
-        status: 'pending',
-        downloadDate: new Date().toLocaleDateString()
-    });
-    
-    // Keep only last 50 items
-    if (history.length > 50) {
-        history.pop();
+    // Keep only last 100 items
+    if (appState.downloadHistory.length > 100) {
+        appState.downloadHistory = appState.downloadHistory.slice(0, 100);
     }
     
-    // Save to localStorage
-    localStorage.setItem('downloadHistory', JSON.stringify(history));
-    
-    // Update global variable
-    downloadHistory = history;
+    localStorage.setItem('allioDownloadHistory', JSON.stringify(appState.downloadHistory));
 }
 
-// Update download history status
-function updateDownloadHistoryStatus(id, status) {
-    const history = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
-    
-    const item = history.find(item => item.id === id);
-    if (item) {
-        item.status = status;
-        localStorage.setItem('downloadHistory', JSON.stringify(history));
-        downloadHistory = history;
+function loadHistory() {
+    const saved = localStorage.getItem('allioDownloadHistory');
+    if (saved) {
+        appState.downloadHistory = JSON.parse(saved);
     }
 }
 
-// Show download history
-function showDownloadHistory() {
-    // Hide other sections
-    searchSection.style.display = 'none';
-    document.querySelector('.seo-content').style.display = 'none';
-    document.querySelector('.ad-banner').style.display = 'none';
-    publicLinkSection.classList.add('hidden');
-    videoDetailsSection.classList.add('hidden');
-    searchResultsSection.classList.add('hidden');
+function displayHistory() {
+    elements.historyList.innerHTML = '';
     
-    // Show download history section
-    downloadHistorySection.classList.remove('hidden');
-    
-    // Load and display history
-    loadDownloadHistory();
-}
-
-// Load download history
-function loadDownloadHistory() {
-    // Load from localStorage
-    downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
-    
-    // Clear existing list
-    historyList.innerHTML = '';
-    
-    if (downloadHistory.length === 0) {
-        historyList.innerHTML = `
+    if (appState.downloadHistory.length === 0) {
+        elements.historyList.innerHTML = `
             <div class="empty-history">
                 <i class="fas fa-download"></i>
                 <p>No download history yet</p>
@@ -960,8 +852,7 @@ function loadDownloadHistory() {
         return;
     }
     
-    // Display each item
-    downloadHistory.forEach((item, index) => {
+    appState.downloadHistory.forEach((item, index) => {
         // Add ad banner every 5th item
         if (index > 0 && index % 5 === 0) {
             const adBanner = document.createElement('div');
@@ -983,21 +874,25 @@ function loadDownloadHistory() {
                     </div>
                 </div>
             `;
-            historyList.appendChild(adBanner);
+            elements.historyList.appendChild(adBanner);
         }
         
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
+        
+        const platformIcon = getPlatformIcon(item.platform);
+        const date = new Date(item.timestamp).toLocaleDateString();
+        
         historyItem.innerHTML = `
             <div class="history-thumbnail">
-                <i class="fas fa-${getPlatformIcon(item.platform)}"></i>
+                <i class="fas fa-${platformIcon}"></i>
             </div>
             <div class="history-details">
                 <div class="history-title">${item.title}</div>
                 <div class="history-meta">
                     <span><i class="fas fa-globe"></i> ${item.platform}</span>
                     <span><i class="fas fa-file"></i> ${item.format}</span>
-                    <span><i class="fas fa-calendar"></i> ${item.downloadDate}</span>
+                    <span><i class="fas fa-calendar"></i> ${date}</span>
                 </div>
             </div>
             <div class="history-actions">
@@ -1009,11 +904,11 @@ function loadDownloadHistory() {
                 </button>
             </div>
         `;
-        historyList.appendChild(historyItem);
+        
+        elements.historyList.appendChild(historyItem);
     });
 }
 
-// Get platform icon
 function getPlatformIcon(platform) {
     const icons = {
         youtube: 'youtube',
@@ -1022,162 +917,122 @@ function getPlatformIcon(platform) {
         facebook: 'facebook',
         twitter: 'twitter',
         telegram: 'telegram',
-        terabox: 'cloud',
-        streamnet: 'network-wired',
-        diskwala: 'hdd',
-        sora: 'brain'
+        reddit: 'reddit',
+        pinterest: 'pinterest',
+        vimeo: 'vimeo',
+        dailymotion: 'play',
+        soundcloud: 'soundcloud',
+        twitch: 'twitch'
     };
     return icons[platform] || 'video';
 }
 
-// Download from history
 function downloadFromHistory(id) {
-    const item = downloadHistory.find(item => item.id === id);
-    if (item) {
-        // Set current data
-        publicLinkId = id;
-        currentUrl = item.url;
-        currentTitle = item.title;
-        currentPlatform = item.platform;
-        
-        // Show public link section
-        showPublicLinkSection(item);
-        
-        // Start download
-        downloadFromPublicLink();
+    const item = appState.downloadHistory.find(item => item.id === id);
+    if (item && item.downloadUrl) {
+        triggerDownload(item.downloadUrl, item.filename);
+        updateDownloadCount();
     }
 }
 
-// Remove from history
 function removeFromHistory(id) {
-    // Filter out the item
-    downloadHistory = downloadHistory.filter(item => item.id !== id);
-    
-    // Save to localStorage
-    localStorage.setItem('downloadHistory', JSON.stringify(downloadHistory));
-    
-    // Reload history display
-    loadDownloadHistory();
-    
-    showNotification('Removed', 'Item removed from history');
+    appState.downloadHistory = appState.downloadHistory.filter(item => item.id !== id);
+    localStorage.setItem('allioDownloadHistory', JSON.stringify(appState.downloadHistory));
+    displayHistory();
+    showNotification('Success', 'Item removed from history');
 }
 
-// Clear download history
 function clearDownloadHistory() {
     if (confirm('Are you sure you want to clear all download history?')) {
-        downloadHistory = [];
-        localStorage.removeItem('downloadHistory');
-        loadDownloadHistory();
-        showNotification('Cleared', 'Download history cleared');
+        appState.downloadHistory = [];
+        localStorage.removeItem('allioDownloadHistory');
+        displayHistory();
+        showNotification('Success', 'Download history cleared');
     }
 }
 
-// Save default settings to localStorage
-function saveDefaultSettings() {
-    localStorage.setItem('allioProDefaultSettings', JSON.stringify(defaultSettings));
+// --- UI EVENT HANDLERS ---
+function toggleMenu() {
+    elements.menu.classList.toggle('show');
 }
 
-// Load default settings from localStorage
-function loadDefaultSettings() {
-    const saved = localStorage.getItem('allioProDefaultSettings');
-    if (saved) {
-        defaultSettings = JSON.parse(saved);
-        selectedFormat = defaultSettings.format;
-        selectedQuality = defaultSettings.quality;
-        lyricsEnabled = defaultSettings.lyrics;
-    }
+function toggleLangDropdown() {
+    elements.langDropdown.classList.toggle('show');
+}
+
+function changeLanguage(lang) {
+    appState.userSettings.language = lang;
+    localStorage.setItem('allioSettings', JSON.stringify(appState.userSettings));
     
-    // Load platform settings
-    const savedPlatformSettings = localStorage.getItem('allioProPlatformSettings');
-    if (savedPlatformSettings) {
-        platformSettings = JSON.parse(savedPlatformSettings);
+    const langMap = {
+        'en': 'EN',
+        'hi': 'HI',
+        'es': 'ES'
+    };
+    
+    elements.currentLang.textContent = langMap[lang];
+    elements.langDropdown.classList.remove('show');
+    
+    const langNames = {
+        'en': 'English',
+        'hi': 'हिन्दी',
+        'es': 'Español'
+    };
+    
+    showNotification('Language Changed', `Interface switched to ${langNames[lang]}`);
+}
+
+async function pasteFromClipboard() {
+    try {
+        const text = await navigator.clipboard.readText();
+        elements.inputUrl.value = text;
+        showNotification('Pasted', 'URL pasted from clipboard');
+        await processInput();
+    } catch (err) {
+        showNotification('Error', 'Could not access clipboard', 'error');
     }
 }
 
-// Save platform settings to localStorage
-function savePlatformSettings() {
-    localStorage.setItem('allioProPlatformSettings', JSON.stringify(platformSettings));
+function setPlatform(platform) {
+    appState.currentPlatform = platform;
+    elements.inputUrl.placeholder = `Search ${platform.charAt(0).toUpperCase() + platform.slice(1)} or paste URL...`;
+    elements.inputUrl.focus();
+    
+    // Highlight selected platform
+    document.querySelectorAll('.platform-item').forEach(item => {
+        item.style.background = 'rgba(255, 255, 255, 0.03)';
+        item.style.border = '1px solid var(--glass-border)';
+    });
+    
+    event.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)';
+    event.currentTarget.style.border = '1px solid rgba(102, 126, 234, 0.5)';
+    
+    showNotification('Platform Selected', `Now searching on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`);
 }
 
-// Reset default settings
-function resetDefaultSettings() {
-    localStorage.removeItem('allioProDefaultSettings');
-    localStorage.removeItem('allioProPlatformSettings');
-    defaultSettings = {
-        format: 'video',
-        quality: 'high',
-        lyrics: true
-    };
-    platformSettings = {
-        youtube: { format: 'video', quality: 'high' },
-        instagram: { format: 'video', quality: 'high' },
-        tiktok: { format: 'video', quality: 'high' },
-        streamnet: { format: 'video', quality: 'high' },
-        diskwala: { format: 'video', quality: 'high' },
-        sora: { format: 'sora', quality: 'high' }
-    };
-    showNotification('Settings Reset', 'Default settings have been reset to factory defaults');
-}
-
-// Toggle Theme
 function toggleTheme() {
     const html = document.documentElement;
     const currentTheme = html.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
     html.setAttribute('data-theme', newTheme);
+    appState.userSettings.theme = newTheme;
+    localStorage.setItem('allioSettings', JSON.stringify(appState.userSettings));
     
-    // Show notification
     showNotification('Theme Changed', `Switched to ${newTheme} mode`);
 }
 
-// Show Notification
-function showNotification(title, message) {
-    notificationTitle.innerText = title;
-    notificationMessage.innerText = message;
-    notification.classList.add('show');
-    
-    setTimeout(() => {
-        notification.classList.remove('show');
-    }, 3000);
-}
-
-// Show/Hide Loading Spinner
-function showLoadingSpinner(show) {
-    if (show) {
-        loadingSpinner.classList.add('show');
-    } else {
-        loadingSpinner.classList.remove('show');
-    }
-}
-
-// Format view count
-function formatViewCount(views) {
-    const num = parseInt(views.replace(/,/g, ''));
-    if (num >= 1000000) {
-        return (num / 1000000).toFixed(1) + 'M';
-    } else if (num >= 1000) {
-        return (num / 1000).toFixed(1) + 'K';
-    }
-    return views;
-}
-
-// Format date
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-    });
-}
-
-// Open Settings Modal
 function openSettings() {
-    settingsModal.classList.add('show');
-    
-    // Load current platform settings
-    for (const [platform, settings] of Object.entries(platformSettings)) {
+    showSection(elements.settingsModal);
+    loadPlatformSettings();
+}
+
+function closeSettings() {
+    hideSection(elements.settingsModal);
+}
+
+function loadPlatformSettings() {
+    for (const [platform, settings] of Object.entries(appState.platformSettings)) {
         const formatSelect = document.getElementById(`${platform}-format`);
         const qualitySelect = document.getElementById(`${platform}-quality`);
         
@@ -1186,37 +1041,53 @@ function openSettings() {
     }
 }
 
-// Close Settings Modal
-function closeSettings() {
-    settingsModal.classList.remove('show');
-}
-
-// Save Platform Settings
 function savePlatformSettings() {
-    // Save all platform settings
-    for (const platform of Object.keys(platformSettings)) {
+    for (const platform of Object.keys(appState.platformSettings)) {
         const formatSelect = document.getElementById(`${platform}-format`);
         const qualitySelect = document.getElementById(`${platform}-quality`);
         
         if (formatSelect && qualitySelect) {
-            platformSettings[platform] = {
+            appState.platformSettings[platform] = {
                 format: formatSelect.value,
                 quality: qualitySelect.value
             };
         }
     }
     
-    // Save to localStorage
-    localStorage.setItem('allioProPlatformSettings', JSON.stringify(platformSettings));
-    
-    // Show notification
+    localStorage.setItem('allioPlatformSettings', JSON.stringify(appState.platformSettings));
     showNotification('Settings Saved', 'Platform settings have been saved');
-    
-    // Close modal
     closeSettings();
 }
 
-// Show Page Modal
+function resetDefaultSettings() {
+    if (confirm('Are you sure you want to reset all settings to default?')) {
+        localStorage.removeItem('allioSettings');
+        localStorage.removeItem('allioPlatformSettings');
+        
+        appState.userSettings = {
+            theme: 'dark',
+            language: 'en',
+            defaultQuality: '720p',
+            defaultFormat: 'mp4',
+            autoDownload: false,
+            saveHistory: true
+        };
+        
+        appState.platformSettings = {
+            youtube: { format: 'mp4', quality: '1080p' },
+            instagram: { format: 'mp4', quality: '720p' },
+            tiktok: { format: 'mp4', quality: '720p' },
+            facebook: { format: 'mp4', quality: '720p' },
+            twitter: { format: 'mp4', quality: '720p' },
+            telegram: { format: 'mp4', quality: '720p' },
+            soundcloud: { format: 'mp3', quality: '320' },
+            spotify: { format: 'mp3', quality: '320' }
+        };
+        
+        showNotification('Settings Reset', 'All settings have been reset to defaults');
+    }
+}
+
 function showPage(page) {
     const pages = {
         about: {
@@ -1282,6 +1153,9 @@ function showPage(page) {
                     
                     <h4>Is ALLIO PRO free to use?</h4>
                     <p>Yes, ALLIO PRO is completely free to use with no hidden charges or subscription fees.</p>
+                    
+                    <h4>Which platforms are supported?</h4>
+                    <p>We support YouTube, Instagram, TikTok, Facebook, Twitter, Telegram, Reddit, Pinterest, Vimeo, Dailymotion, SoundCloud, and more.</p>
                 </div>
             `
         }
@@ -1289,117 +1163,256 @@ function showPage(page) {
     
     const pageData = pages[page];
     if (pageData) {
-        pageModalTitle.innerText = pageData.title;
-        pageModalContent.innerHTML = pageData.content;
-        pageModal.classList.add('show');
+        document.getElementById('pageModalTitle').textContent = pageData.title;
+        document.getElementById('pageModalContent').innerHTML = pageData.content;
+        showSection(elements.pageModal);
     }
 }
 
-// Close Page Modal
 function closePageModal() {
-    pageModal.classList.remove('show');
+    hideSection(elements.pageModal);
 }
 
-// Share App
 function shareApp() {
-    pageModalTitle.innerText = 'Share ALLIO PRO';
-    pageModalContent.innerHTML = `
-        <div class="page-content">
-            <h3>Share with Friends</h3>
-            <p>Help your friends discover the best media downloader!</p>
-            
-            <div class="share-options">
-                <button class="share-btn whatsapp" onclick="shareViaWhatsApp()">
-                    <i class="fab fa-whatsapp"></i> WhatsApp
-                </button>
-                <button class="share-btn telegram" onclick="shareViaTelegram()">
-                    <i class="fab fa-telegram"></i> Telegram
-                </button>
-                <button class="share-btn copy" onclick="copyShareLink()">
-                    <i class="fas fa-copy"></i> Copy Link
-                </button>
+    const shareData = {
+        title: 'ALLIO PRO - Premium Media Downloader',
+        text: 'Check out this amazing media downloader!',
+        url: window.location.origin
+    };
+    
+    if (navigator.share) {
+        navigator.share(shareData);
+    } else {
+        showPage('share');
+        document.getElementById('pageModalTitle').textContent = 'Share ALLIO PRO';
+        document.getElementById('pageModalContent').innerHTML = `
+            <div class="page-content">
+                <h3>Share with Friends</h3>
+                <p>Help your friends discover the best media downloader!</p>
+                
+                <div class="share-options">
+                    <button class="share-btn whatsapp" onclick="shareViaWhatsApp()">
+                        <i class="fab fa-whatsapp"></i> WhatsApp
+                    </button>
+                    <button class="share-btn telegram" onclick="shareViaTelegram()">
+                        <i class="fab fa-telegram"></i> Telegram
+                    </button>
+                    <button class="share-btn copy" onclick="copyShareLink()">
+                        <i class="fas fa-copy"></i> Copy Link
+                    </button>
+                </div>
             </div>
-        </div>
-    `;
-    pageModal.classList.add('show');
+        `;
+    }
 }
 
-// Share via WhatsApp
 function shareViaWhatsApp() {
-    const text = "Check out ALLIO PRO - The ultimate media downloader! https://allio-delta.vercel.app/?ref=share";
+    const text = "Check out ALLIO PRO - The ultimate media downloader! " + window.location.origin;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     showNotification('Sharing', 'Opening WhatsApp...');
 }
 
-// Share via Telegram
 function shareViaTelegram() {
-    const text = "Check out ALLIO PRO - The ultimate media downloader! https://allio-delta.vercel.app/?ref=share";
-    const url = `https://t.me/share/url?url=${encodeURIComponent('https://allio-delta.vercel.app/?ref=share')}&text=${encodeURIComponent(text)}`;
+    const text = "Check out ALLIO PRO - The ultimate media downloader! " + window.location.origin;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(window.location.origin)}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     showNotification('Sharing', 'Opening Telegram...');
 }
 
-// Copy share link
 function copyShareLink() {
-    const link = "https://allio-delta.vercel.app/?ref=share";
+    const link = window.location.origin;
     navigator.clipboard.writeText(link).then(() => {
         showNotification('Link Copied', 'Share link copied to clipboard!');
     });
 }
 
-// Enter Key Support
-input.addEventListener('keypress', (e) => { 
-    if(e.key === 'Enter') processInput(); 
-});
+function copyPublicLink() {
+    elements.publicLinkInput.select();
+    document.execCommand('copy');
+    showNotification('Link Copied', 'Download link copied to clipboard!');
+}
 
-// Close menu on outside click
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.menu-btn') && !e.target.closest('.dropdown-menu') && !e.target.closest('.instagram-btn')) {
-        menu.classList.remove('show');
+function generateNewLink() {
+    if (appState.currentVideoData.url) {
+        generateDownloadLink();
     }
-    
-    if (!e.target.closest('.lang-toggle') && !e.target.closest('.lang-dropdown')) {
-        langDropdown.classList.remove('show');
-    }
-    
-    // Close bottom sheet when clicking outside
-    if (bottomSheet.classList.contains('show') && !e.target.closest('.bottom-sheet')) {
-        closeBottomSheet();
-    }
-});
+}
 
-// Simulate live download count updates
-setInterval(() => {
-    const count = parseInt(downloadCount.innerText.replace(/[^0-9]/g, ''));
-    const increment = Math.floor(Math.random() * 5) + 1;
-    downloadCount.innerText = `${(count + increment).toLocaleString()} Downloads Today`;
-}, 30000);
+function downloadFromPublicLink() {
+    const url = elements.publicLinkInput.value;
+    if (url) {
+        window.open(url, '_blank');
+    }
+}
 
-// Initialize on page load
+function showDownloadHistory() {
+    loadHistory();
+    displayHistory();
+    showSection(elements.downloadHistorySection);
+    hideSection(elements.searchSection);
+    hideSection(elements.videoDetailsSection);
+    hideSection(elements.searchResultsSection);
+    hideSection(elements.publicLinkSection);
+}
+
+function closeVideoDetails() {
+    hideSection(elements.videoDetailsSection);
+    showSection(elements.searchSection);
+}
+
+function closeSearchResults() {
+    hideSection(elements.searchResultsSection);
+    showSection(elements.searchSection);
+}
+
+function showBottomSheet() {
+    showSection(elements.bottomSheet);
+}
+
+function closeBottomSheet() {
+    hideSection(elements.bottomSheet);
+}
+
+// --- QR CODE FUNCTIONALITY ---
+function generateQRCode(text) {
+    // Simple QR code generation using a library would be ideal
+    // For now, create a placeholder
+    elements.qrCodeContainer.innerHTML = `
+        <div style="padding: 20px; background: white; border-radius: 8px;">
+            <p style="color: black; text-align: center;">QR Code for:<br>${text.substring(0, 50)}...</p>
+        </div>
+    `;
+}
+
+function showQrModal() {
+    const link = elements.publicLinkInput.value;
+    if (link) {
+        generateQRCode(link);
+        showSection(elements.qrModal);
+    }
+}
+
+function closeQrModal() {
+    hideSection(elements.qrModal);
+}
+
+// --- EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     // Load saved settings
-    loadDefaultSettings();
+    const savedSettings = localStorage.getItem('allioSettings');
+    if (savedSettings) {
+        appState.userSettings = JSON.parse(savedSettings);
+        
+        // Apply theme
+        if (appState.userSettings.theme) {
+            document.documentElement.setAttribute('data-theme', appState.userSettings.theme);
+        }
+        
+        // Apply language
+        if (appState.userSettings.language) {
+            elements.currentLang.textContent = appState.userSettings.language.toUpperCase();
+        }
+    }
+    
+    // Load platform settings
+    const savedPlatformSettings = localStorage.getItem('allioPlatformSettings');
+    if (savedPlatformSettings) {
+        appState.platformSettings = JSON.parse(savedPlatformSettings);
+    }
     
     // Load download history
-    downloadHistory = JSON.parse(localStorage.getItem('downloadHistory') || '[]');
+    loadHistory();
     
-    // Check for shared URL
+    // Check for shared URL in query params
     const urlParams = new URLSearchParams(window.location.search);
     const sharedUrl = urlParams.get('url');
-    
     if (sharedUrl) {
-        input.value = sharedUrl;
+        elements.inputUrl.value = sharedUrl;
         processInput();
     }
     
-    // Check for download ID in URL
-    const downloadId = window.location.pathname.split('/download/')[1];
-    if (downloadId) {
-        const downloadData = JSON.parse(localStorage.getItem(`download_${downloadId}`));
-        if (downloadData) {
-            publicLinkId = downloadId;
-            showPublicLinkSection(downloadData);
+    // Add enter key support for search
+    elements.inputUrl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            processInput();
         }
-    }
+    });
+    
+    // Add debounced search
+    elements.inputUrl.addEventListener('input', debounce((e) => {
+        const value = e.target.value.trim();
+        if (value && !/^https?:\/\/.+/i.test(value)) {
+            // This is a search query, could implement live search
+        }
+    }, 500));
+    
+    // Close dropdowns on outside click
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.lang-toggle') && !e.target.closest('.lang-dropdown')) {
+            elements.langDropdown.classList.remove('show');
+        }
+        
+        if (!e.target.closest('.menu-btn') && !e.target.closest('.dropdown-menu')) {
+            elements.menu.classList.remove('show');
+        }
+        
+        // Close modals on outside click
+        if (e.target.classList.contains('popup-overlay')) {
+            e.target.classList.remove('show');
+        }
+    });
+    
+    // Close bottom sheet on outside click
+    document.addEventListener('click', (e) => {
+        if (elements.bottomSheet.classList.contains('show') && 
+            !e.target.closest('.bottom-sheet') && 
+            !e.target.closest('.download-btn')) {
+            closeBottomSheet();
+        }
+    });
+    
+    // Simulate live download count updates
+    setInterval(() => {
+        const count = parseInt(elements.downloadCount.textContent.replace(/[^0-9]/g, ''));
+        const increment = Math.floor(Math.random() * 5) + 1;
+        elements.downloadCount.textContent = `${(count + increment).toLocaleString()} Downloads Today`;
+    }, 30000);
 });
+
+// --- EXPORT FUNCTIONS ---
+window.downloadFromPublicLink = downloadFromPublicLink;
+window.copyPublicLink = copyPublicLink;
+window.generateNewLink = generateNewLink;
+window.showDownloadHistory = showDownloadHistory;
+window.clearDownloadHistory = clearDownloadHistory;
+window.removeFromHistory = removeFromHistory;
+window.downloadFromHistory = downloadFromHistory;
+window.toggleTheme = toggleTheme;
+window.changeLanguage = changeLanguage;
+window.pasteFromClipboard = pasteFromClipboard;
+window.setPlatform = setPlatform;
+window.processInput = processInput;
+window.closeVideoDetails = closeVideoDetails;
+window.closeSearchResults = closeSearchResults;
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.savePlatformSettings = savePlatformSettings;
+window.resetDefaultSettings = resetDefaultSettings;
+window.showPage = showPage;
+window.closePageModal = closePageModal;
+window.shareApp = shareApp;
+window.shareViaWhatsApp = shareViaWhatsApp;
+window.shareViaTelegram = shareViaTelegram;
+window.copyShareLink = copyShareLink;
+window.toggleMenu = toggleMenu;
+window.toggleLangDropdown = toggleLangDropdown;
+window.closeBottomSheet = closeBottomSheet;
+window.selectFormat = selectFormat;
+window.generateDownloadLink = generateDownloadLink;
+window.selectSearchResult = selectSearchResult;
+window.downloadFromSearchResult = downloadFromSearchResult;
+window.selectPickerVideo = selectPickerVideo;
+window.downloadPickerAudio = downloadPickerAudio;
+window.showQrModal = showQrModal;
+window.closeQrModal = closeQrModal;
