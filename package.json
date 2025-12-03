@@ -1,0 +1,21 @@
+{
+  "name": "allio-pro-downloader",
+  "version": "2.0.0",
+  "description": "Premium All-in-One Media Downloader",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "echo 'No build step required for this project'"
+  },
+  "engines": {
+    "node": ">=18.x"
+  },
+  "keywords": [
+    "video-downloader",
+    "youtube",
+    "instagram",
+    "tiktok"
+  ],
+  "author": "LoopLabs Tech",
+  "license": "MIT"
+}

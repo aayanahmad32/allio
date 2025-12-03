@@ -1,8 +1,5 @@
-# Force HTTPS
-/* https://:host:url 301!
-
-# API Handling (If running server.js as a function)
+# API Proxying
 /api/* /server.js 200
 
-# SPA Fallback (Send all other requests to index.html)
-/* /index.html 200
+# SPA Fallback
+/* /server.js 200

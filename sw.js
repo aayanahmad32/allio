@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allio-pro-v2.0.0';
+const CACHE_NAME = 'allio-pro-v2.5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -11,15 +11,15 @@ const ASSETS_TO_CACHE = [
 
 // Install Event
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Opened cache');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate Event - Cleanup old caches
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -34,40 +34,16 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Network First, fallback to Cache
+// Fetch Event
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests like Google Analytics
-  if (!event.request.url.startsWith(self.location.origin) &&
-    !event.request.url.includes('cdnjs') &&
-    !event.request.url.includes('fonts')) {
-    return;
-  }
-  
-  // Handle API requests (Network Only)
-  if (event.request.url.includes('/api/')) {
+  // API aur Download links ko cache nahi karna
+  if (event.request.url.includes('/api/') || event.request.url.includes('/download/')) {
     return;
   }
   
   event.respondWith(
-    fetch(event.request)
-    .then((response) => {
-      // Check if we received a valid response
-      if (!response || response.status !== 200 || response.type !== 'basic') {
-        return response;
-      }
-      
-      // Clone the response
-      const responseToCache = response.clone();
-      
-      caches.open(CACHE_NAME).then((cache) => {
-        cache.put(event.request, responseToCache);
-      });
-      
-      return response;
-    })
-    .catch(() => {
-      // If network fails, try cache
-      return caches.match(event.request);
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });

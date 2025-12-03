@@ -4,8 +4,8 @@
     "description": "Premium global media downloader for YouTube, Instagram, TikTok & more.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#0f0c29",
-    "theme_color": "#0f0c29",
+    "background_color": "#050507",
+    "theme_color": "#050507",
     "orientation": "portrait",
     "icons": [
         {
@@ -17,12 +17,15 @@
             "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s512/IMG_20251124_121644.jpg",
             "sizes": "512x512",
             "type": "image/jpeg"
-        },
-        {
-            "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s1024/IMG_20251124_121644.jpg",
-            "sizes": "1024x1024",
-            "type": "image/jpeg"
         }
     ],
-    "categories": ["utilities", "productivity", "music", "video"]
+    "categories": ["utilities", "productivity", "social"],
+    "screenshots": [
+        {
+            "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjMXOrEuF8EgL-z7AokTMfBZYw-4WKaOfT9VO9uvjhptA6uuRrT2z0tfb0p-9nIosG2KQ3MUGP_pazDAuKY3DKsjbbpumoR5YeR9rCowWFxUT7XRlVrBkwtY4pHJ65a-dhi_h6nnyIZvKB9V6yAkpjh_VcgStoZL-Gzu33i_0cegWVtWVvqQiaaEeliKrbu/s1816/Picsart_25-11-24_12-29-59-320.jpg",
+            "sizes": "1080x1920",
+            "type": "image/jpeg",
+            "form_factor": "wide"
+        }
+    ]
 }
