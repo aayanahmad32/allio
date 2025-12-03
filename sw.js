@@ -1,24 +1,25 @@
-const CACHE_NAME = 'allio-pro-premium-v2';
+const CACHE_NAME = 'allio-pro-v2.0.0';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/style.css',
   '/script.js',
-  '/manifest.json'
+  '/manifest.json',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap'
 ];
 
-// Install Event: Cache Static Assets
+// Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-    .then((cache) => {
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Opened cache');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  self.skipWaiting();
 });
 
-// Activate Event: Cleanup Old Caches
+// Activate Event - Cleanup old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -31,45 +32,42 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  self.clients.claim();
 });
 
-// Fetch Event: Network First for APIs, Cache First for UI
+// Fetch Event - Network First, fallback to Cache
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
-  
-  // 1. IGNORE API CALLS (Network Only)
-  // Ensure we always get fresh data for downloads and searches
-  // Matches domains from APP_CONFIG in script.js
-  if (url.includes('api.cobalt.tools') ||
-    url.includes('vid.puffyan.us') ||
-    url.includes('youtube.com') ||
-    url.includes('corsproxy.io') ||
-    url.includes('googleapis.com')) {
-    return; // Go directly to network
+  // Skip cross-origin requests like Google Analytics
+  if (!event.request.url.startsWith(self.location.origin) &&
+    !event.request.url.includes('cdnjs') &&
+    !event.request.url.includes('fonts')) {
+    return;
   }
   
-  // 2. Cache First, Fallback to Network for UI assets
+  // Handle API requests (Network Only)
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+  
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
     .then((response) => {
-      if (response) {
+      // Check if we received a valid response
+      if (!response || response.status !== 200 || response.type !== 'basic') {
         return response;
       }
-      return fetch(event.request)
-        .then((response) => {
-          // Check if we received a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          // Clone and cache new static assets
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          return response;
-        });
+      
+      // Clone the response
+      const responseToCache = response.clone();
+      
+      caches.open(CACHE_NAME).then((cache) => {
+        cache.put(event.request, responseToCache);
+      });
+      
+      return response;
+    })
+    .catch(() => {
+      // If network fails, try cache
+      return caches.match(event.request);
     })
   );
 });

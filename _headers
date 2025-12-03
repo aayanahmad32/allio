@@ -3,12 +3,21 @@ X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 X-XSS-Protection: 1; mode=block
 Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: geolocation=(), microphone=(), clipboard-read=(self), clipboard-write=(self)
 Access-Control-Allow-Origin: *
 
 /sw.js
-Cache-Control: public, max-age=0, must-revalidate
+Cache-Control: no-cache
+Service-Worker-Allowed: /
 
 /manifest.json
-Content-Type: application/manifest+json
 Cache-Control: public, max-age=0, must-revalidate
+Content-Type: application/manifest+json
+
+/*.js
+Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+Cache-Control: public, max-age=86400

@@ -660,7 +660,7 @@ server.listen(CONFIG.port, () => {
 ║    📍 Server running on: http://localhost:${CONFIG.port}        ║
 ║    🔄 Rate Limit: ${CONFIG.maxRequests} requests/minute         ║
 ║    🌐 Multiple APIs & Proxies Active                         ║
-║    💾 Cache Size: ${CONFIG.cache.maxSize} items                   ║
+║    💾 Cache Size: ${cache.maxSize} items                   ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
     `);

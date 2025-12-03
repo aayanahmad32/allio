@@ -243,9 +243,25 @@
                         <!-- Format options will be dynamically added here -->
                     </div>
                     
-                    <button class="download-btn" id="downloadVideoBtn" onclick="generatePublicLink()">
-                        Generate Download Link
-                    </button>
+                    <!-- ⭐ NEW STUNNING DOWNLOAD BUTTON -->
+                    <div class="download-button-container">
+                        <button class="mega-download-btn" id="downloadVideoBtn" onclick="generateDownloadLink()">
+                            <div class="btn-glow"></div>
+                            <div class="btn-content">
+                                <div class="btn-icon">
+                                    <i class="fas fa-download"></i>
+                                </div>
+                                <div class="btn-text-container">
+                                    <span class="btn-text">GENERATE DOWNLOAD LINK</span>
+                                    <span class="btn-subtext">High Quality • Fast • Free</span>
+                                </div>
+                            </div>
+                            <div class="btn-loading hidden">
+                                <div class="spinner-small"></div>
+                                <span>Processing...</span>
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -258,8 +274,58 @@
                     <button class="close-section-btn" onclick="closeSearchResults()">×</button>
                 </div>
                 
-                <div class="search-results-container" id="searchResultsContainer">
-                    <!-- Search results will be dynamically added here -->
+                <!-- Loading Skeleton -->
+                <div id="searchLoadingSkeleton" class="skeleton-loader hidden">
+                    <div class="skeleton-card">
+                        <div class="skeleton-thumbnail"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-thumbnail"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-thumbnail"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-thumbnail"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-thumbnail"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-thumbnail"></div>
+                        <div class="skeleton-text"></div>
+                        <div class="skeleton-text short"></div>
+                    </div>
+                </div>
+                
+                <!-- Results Grid -->
+                <div class="search-results-grid" id="searchResultsContainer">
+                    <!-- Dynamically generated result cards -->
+                </div>
+                
+                <!-- Empty State -->
+                <div id="searchEmptyState" class="empty-state hidden">
+                    <i class="fas fa-search"></i>
+                    <h3>No Results Found</h3>
+                    <p>Try searching with different keywords</p>
+                    <div class="suggestions">
+                        <p>Popular searches:</p>
+                        <div class="suggestion-tags">
+                            <span class="suggestion-tag" onclick="searchSuggestion('trending music')">Trending Music</span>
+                            <span class="suggestion-tag" onclick="searchSuggestion('popular videos')">Popular Videos</span>
+                            <span class="suggestion-tag" onclick="searchSuggestion('latest songs')">Latest Songs</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -367,47 +433,61 @@
     <!-- PUBLIC LINK SECTION -->
     <section id="publicLinkSection" class="hidden">
         <div class="container glass-panel">
-            <h2>Your Download Link is Ready</h2>
-            <p>Share this link or click the download button to start downloading</p>
+            <div class="success-animation">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2>Your Download Link is Ready!</h2>
             
-            <div class="public-link-container">
-                <div class="public-link">
-                    <input type="text" id="publicLinkInput" readonly>
-                    <button onclick="copyPublicLink()">
-                        <i class="fas fa-copy"></i> Copy
-                    </button>
+            <!-- Download Info Cards -->
+            <div class="download-info-grid">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-file-video"></i>
+                    </div>
+                    <div class="info-details">
+                        <h3 id="downloadTitle">Loading...</h3>
+                        <p id="downloadPlatform">Loading...</p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div class="info-details">
+                        <h3>Format & Quality</h3>
+                        <p id="downloadFormatQuality">Loading...</p>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-hdd"></i>
+                    </div>
+                    <div class="info-details">
+                        <h3>File Size</h3>
+                        <p id="downloadSize">Loading...</p>
+                    </div>
                 </div>
             </div>
             
-            <div class="download-info">
-                <div class="info-row">
-                    <span class="info-label">Title:</span>
-                    <span class="info-value" id="downloadTitle">Loading...</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Platform:</span>
-                    <span class="info-value" id="downloadPlatform">Loading...</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Format:</span>
-                    <span class="info-value" id="downloadFormat">Loading...</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Quality:</span>
-                    <span class="info-value" id="downloadQuality">Loading...</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Size:</span>
-                    <span class="info-value" id="downloadSize">Loading...</span>
-                </div>
-            </div>
-            
-            <div class="download-actions">
-                <button class="download-btn" onclick="downloadFromPublicLink()">
-                    <i class="fas fa-download"></i> Download Now
+            <!-- Download Link Input -->
+            <div class="link-container">
+                <input type="text" id="publicLinkInput" readonly>
+                <button onclick="copyPublicLink()">
+                    <i class="fas fa-copy"></i> Copy
                 </button>
-                <button class="secondary-btn" onclick="generateNewLink()">
-                    <i class="fas fa-sync-alt"></i> Generate New Link
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="primary-action-btn" onclick="triggerDirectDownload()">
+                    <i class="fas fa-download"></i>
+                    Download Now
+                </button>
+                <button class="secondary-action-btn" onclick="shareDownloadLink()">
+                    <i class="fas fa-share-alt"></i>
+                    Share
                 </button>
             </div>
             
@@ -532,7 +612,7 @@
         </div>
     </div>
 
-    <!-- FOOTER (Simplified) -->
+    <!-- FOOTER -->
     <footer>
         <div class="footer-content">
             <div class="footer-section">
@@ -555,28 +635,22 @@
             </div>
         </div>
         
-        <!-- 728px AD BANNER IN FOOTER -->
-        <div class="ad-banner-footer">
-            <div class="ad-container ad-horizontal">
-                <div class="ad-label">Advertisement</div>
-                <div class="ad-content">
-                    <script type="text/javascript">
-                        atOptions = {
-                            'key' : '478eb9342f285f826b942ea1f9e9db74',
-                            'format' : 'iframe',
-                            'height' : 90,
-                            'width' : 728,
-                            'params' : {}
-                        };
-                    </script>
-                    <script type="text/javascript" src="//www.highperformanceformat.com/478eb9342f285f826b942ea1f9e9db74/invoke.js"></script>
+        <!-- ⭐ NEW EDUCATIONAL WARNING -->
+        <div class="educational-warning">
+            <div class="warning-container">
+                <div class="warning-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="warning-content">
+                    <h4>Educational Purpose Only</h4>
+                    <p>This tool is created for educational purposes. Please respect copyright laws and use responsibly. Do not use this tool to download copyrighted content without permission from the copyright holder.</p>
                 </div>
             </div>
         </div>
         
-        <div class="footer-warning">
-            <p><i class="fas fa-exclamation-triangle"></i> this tool created only for education purpose</p>
-            <p>&copy; 2023 LoopLabs Tech. All rights reserved.</p>
+        <div class="footer-bottom">
+            <p>© 2025 LoopLabs Tech. All rights reserved.</p>
+            <p class="last-updated">Last updated: December 2025</p>
         </div>
     </footer>
 

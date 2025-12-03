@@ -83,12 +83,13 @@ const elements = {
     videoDescription: document.getElementById('videoDescription'),
     formatOptions: document.getElementById('formatOptions'),
     searchResultsContainer: document.getElementById('searchResultsContainer'),
+    searchLoadingSkeleton: document.getElementById('searchLoadingSkeleton'),
+    searchEmptyState: document.getElementById('searchEmptyState'),
     historyList: document.getElementById('historyList'),
     publicLinkInput: document.getElementById('publicLinkInput'),
     downloadTitle: document.getElementById('downloadTitle'),
     downloadPlatform: document.getElementById('downloadPlatform'),
-    downloadFormat: document.getElementById('downloadFormat'),
-    downloadQuality: document.getElementById('downloadQuality'),
+    downloadFormatQuality: document.getElementById('downloadFormatQuality'),
     downloadSize: document.getElementById('downloadSize'),
     qrCodeContainer: document.getElementById('qrCodeContainer')
 };
@@ -354,7 +355,7 @@ async function searchYouTube(query, options = {}) {
     if (options.duration) params.append('duration', options.duration);
     
     try {
-        const response = await fetch(APP_CONFIG.apis.corsProxy + encodeURIComponent(`${APP_CONFIG.apis.invidious}/search?${params}`));
+        const response = await fetch(`${APP_CONFIG.apis.invidious}/search?${params}`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -516,14 +517,25 @@ async function fetchVideoDetails(url) {
 async function searchVideos(query) {
     showLoadingSpinner(true);
     
+    // Show loading skeleton
+    hideSection(elements.searchEmptyState);
+    showSection(elements.searchLoadingSkeleton);
+    showSection(elements.searchResultsSection);
+    hideSection(elements.searchSection);
+    hideSection(elements.videoDetailsSection);
+    hideSection(elements.publicLinkSection);
+    hideSection(elements.downloadHistorySection);
+    
     try {
         const results = await searchYouTube(query);
-        displaySearchResults(results);
-        showSection(elements.searchResultsSection);
-        hideSection(elements.searchSection);
-        hideSection(elements.videoDetailsSection);
-        hideSection(elements.publicLinkSection);
-        hideSection(elements.downloadHistorySection);
+        
+        hideSection(elements.searchLoadingSkeleton);
+        
+        if (results.length === 0) {
+            showSection(elements.searchEmptyState);
+        } else {
+            displaySearchResults(results);
+        }
         
         // Add to search history
         appState.searchHistory.unshift({
@@ -535,6 +547,8 @@ async function searchVideos(query) {
         showNotification('Success', `Found ${results.length} results for "${query}"`);
     } catch (error) {
         console.error('Error searching videos:', error);
+        hideSection(elements.searchLoadingSkeleton);
+        showSection(elements.searchEmptyState);
         showNotification('Error', error.message || 'Search failed', 'error');
     } finally {
         showLoadingSpinner(false);
@@ -631,7 +645,7 @@ function displaySearchResults(results) {
     
     if (results.length === 0) {
         elements.searchResultsContainer.innerHTML = `
-            <div class="empty-history">
+            <div class="empty-state">
                 <i class="fas fa-search"></i>
                 <p>No results found</p>
             </div>
@@ -641,7 +655,7 @@ function displaySearchResults(results) {
     
     results.forEach(result => {
         const resultItem = document.createElement('div');
-        resultItem.className = 'search-result-item';
+        resultItem.className = 'search-result-card';
         resultItem.onclick = () => selectSearchResult(result);
         
         const thumbnail = result.videoThumbnails?.find(t => t.quality === 'medium')?.url || 
@@ -649,23 +663,27 @@ function displaySearchResults(results) {
                          'https://picsum.photos/seed/' + result.videoId + '/300/180.jpg';
         
         resultItem.innerHTML = `
-            <div class="search-result-thumbnail">
+            <div class="result-thumbnail">
                 <img src="${thumbnail}" alt="${result.title}">
-            </div>
-            <div class="search-result-info">
-                <div class="search-result-title">${result.title}</div>
-                <div class="search-result-meta">
-                    <span><i class="fas fa-user"></i> ${result.author}</span>
-                    <span><i class="fas fa-eye"></i> ${formatViewCount(result.viewCount || 0)}</span>
-                    <span><i class="fas fa-clock"></i> ${formatDuration(result.lengthSeconds || 0)}</span>
-                    <span><i class="fas fa-globe"></i> YouTube</span>
+                <div class="duration-badge">${formatDuration(result.lengthSeconds || 0)}</div>
+                <div class="platform-badge">
+                    <i class="fab fa-youtube"></i>
                 </div>
             </div>
-            <div class="search-result-actions">
-                <button class="search-result-btn" onclick="event.stopPropagation(); downloadFromSearchResult('${result.videoId}')">
-                    <i class="fas fa-download"></i> Download
-                </button>
+            <div class="result-info">
+                <div class="result-title">${result.title}</div>
+                <div class="result-meta">
+                    <span class="channel-name">
+                        <i class="fas fa-user"></i> ${result.author}
+                    </span>
+                    <span class="view-count">
+                        <i class="fas fa-eye"></i> ${formatViewCount(result.viewCount || 0)}
+                    </span>
+                </div>
             </div>
+            <button class="quick-download-btn" onclick="event.stopPropagation(); quickDownload('${result.videoId}')">
+                <i class="fas fa-download"></i>
+            </button>
         `;
         
         elements.searchResultsContainer.appendChild(resultItem);
@@ -687,18 +705,25 @@ async function selectSearchResult(result) {
     hideSection(elements.searchResultsSection);
 }
 
-async function downloadFromSearchResult(videoId) {
+async function quickDownload(videoId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     await fetchVideoDetails(url);
+    // Auto-generate download link
+    await generateDownloadLink();
 }
 
-async function generatePublicLink() {
+async function generateDownloadLink() {
     if (!appState.currentVideoData.url) {
         showNotification('Error', 'No video selected', 'error');
         return;
     }
     
-    showLoadingSpinner(true);
+    const downloadBtn = document.getElementById('downloadVideoBtn');
+    if (!downloadBtn) return;
+    
+    // Show loading state
+    downloadBtn.classList.add('loading');
+    downloadBtn.disabled = true;
     
     try {
         const isAudio = appState.selectedFormat === 'mp3';
@@ -740,7 +765,9 @@ async function generatePublicLink() {
         console.error('Error generating download link:', error);
         showNotification('Error', error.message || 'Failed to generate download link', 'error');
     } finally {
-        showLoadingSpinner(false);
+        // Hide loading state
+        downloadBtn.classList.remove('loading');
+        downloadBtn.disabled = false;
     }
 }
 
@@ -778,14 +805,14 @@ function handleVideoPicker(pickerData) {
 function selectPickerVideo(index) {
     const video = window.currentPickerData.picker[index];
     appState.currentVideoData.url = video.url;
-    generatePublicLink();
+    generateDownloadLink();
     closePageModal();
 }
 
 function downloadPickerAudio() {
     appState.currentVideoData.url = window.currentPickerData.audio;
     appState.selectedFormat = 'mp3';
-    generatePublicLink();
+    generateDownloadLink();
     closePageModal();
 }
 
@@ -795,8 +822,7 @@ function displayPublicLink(downloadInfo) {
     elements.publicLinkInput.value = publicLink;
     elements.downloadTitle.textContent = downloadInfo.title;
     elements.downloadPlatform.textContent = downloadInfo.platform.charAt(0).toUpperCase() + downloadInfo.platform.slice(1);
-    elements.downloadFormat.textContent = downloadInfo.format.toUpperCase();
-    elements.downloadQuality.textContent = downloadInfo.quality;
+    elements.downloadFormatQuality.textContent = `${downloadInfo.format.toUpperCase()} • ${downloadInfo.quality}`;
     elements.downloadSize.textContent = estimateFileSize(180, downloadInfo.quality, downloadInfo.format);
     
     showSection(elements.publicLinkSection);
@@ -806,16 +832,11 @@ function displayPublicLink(downloadInfo) {
     hideSection(elements.downloadHistorySection);
 }
 
-function triggerDownload(url, filename) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || 'download';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    showNotification('Download Started', 'Your download has started');
+function triggerDirectDownload() {
+    const url = elements.publicLinkInput.value;
+    if (url) {
+        window.open(url, '_blank');
+    }
 }
 
 // --- HISTORY MANAGEMENT ---
@@ -930,7 +951,7 @@ function getPlatformIcon(platform) {
 function downloadFromHistory(id) {
     const item = appState.downloadHistory.find(item => item.id === id);
     if (item && item.downloadUrl) {
-        triggerDownload(item.downloadUrl, item.filename);
+        window.open(item.downloadUrl, '_blank');
         updateDownloadCount();
     }
 }
@@ -1218,7 +1239,7 @@ function copyPublicLink() {
 
 function generateNewLink() {
     if (appState.currentVideoData.url) {
-        generatePublicLink();
+        generateDownloadLink();
     }
 }
 
@@ -1278,6 +1299,12 @@ function showQrModal() {
 
 function closeQrModal() {
     hideSection(elements.qrModal);
+}
+
+// --- SEARCH SUGGESTIONS ---
+function searchSuggestion(query) {
+    elements.inputUrl.value = query;
+    processInput();
 }
 
 // --- EVENT LISTENERS ---
@@ -1391,10 +1418,11 @@ window.toggleMenu = toggleMenu;
 window.toggleLangDropdown = toggleLangDropdown;
 window.closeBottomSheet = closeBottomSheet;
 window.selectFormat = selectFormat;
-window.generatePublicLink = generatePublicLink;
+window.generateDownloadLink = generateDownloadLink;
 window.selectSearchResult = selectSearchResult;
-window.downloadFromSearchResult = downloadFromSearchResult;
+window.quickDownload = quickDownload;
 window.selectPickerVideo = selectPickerVideo;
 window.downloadPickerAudio = downloadPickerAudio;
 window.showQrModal = showQrModal;
 window.closeQrModal = closeQrModal;
+window.searchSuggestion = searchSuggestion;
