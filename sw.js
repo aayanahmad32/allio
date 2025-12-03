@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allio-pro-premium-v1';
+const CACHE_NAME = 'allio-pro-premium-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -40,12 +40,12 @@ self.addEventListener('fetch', (event) => {
   
   // 1. IGNORE API CALLS (Network Only)
   // Ensure we always get fresh data for downloads and searches
+  // Matches domains from APP_CONFIG in script.js
   if (url.includes('api.cobalt.tools') ||
     url.includes('vid.puffyan.us') ||
     url.includes('youtube.com') ||
-    url.includes('googleapis.com') ||
-    url.includes('picsum.photos') ||
-    url.includes('highperformanceformat.com')) {
+    url.includes('corsproxy.io') ||
+    url.includes('googleapis.com')) {
     return; // Go directly to network
   }
   

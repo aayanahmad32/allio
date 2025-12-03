@@ -6,15 +6,15 @@ const APP_CONFIG = {
         cobalt: 'https://api.cobalt.tools/api/json',
         invidious: 'https://vid.puffyan.us/api/v1',
         youtubeOembed: 'https://www.youtube.com/oembed',
-        corsProxy: 'https://cors-anywhere.herokuapp.com/'
+        corsProxy: 'https://corsproxy.io/?'
     },
     rateLimits: {
-        cobalt: 20, // requests per minute
-        invidious: 100 // requests per minute
+        cobalt: 20,
+        invidious: 100
     },
     cache: {
-        duration: 5 * 60 * 1000, // 5 minutes
-        maxSize: 50 // max cached items
+        duration: 5 * 60 * 1000,
+        maxSize: 50
     }
 };
 
@@ -223,7 +223,7 @@ function checkRateLimit(api) {
     const now = Date.now();
     const timeDiff = now - appState.apiCallCount.lastReset;
     
-    if (timeDiff >= 60000) { // Reset every minute
+    if (timeDiff >= 60000) {
         appState.apiCallCount[api] = 0;
         appState.apiCallCount.lastReset = now;
     }
@@ -310,7 +310,7 @@ async function fetchFromCobalt(url, options = {}) {
     };
     
     try {
-        const response = await fetch(APP_CONFIG.apis.cobalt, {
+        const response = await fetch(APP_CONFIG.apis.corsProxy + encodeURIComponent(APP_CONFIG.apis.cobalt), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -354,7 +354,7 @@ async function searchYouTube(query, options = {}) {
     if (options.duration) params.append('duration', options.duration);
     
     try {
-        const response = await fetch(`${APP_CONFIG.apis.invidious}/search?${params}`);
+        const response = await fetch(APP_CONFIG.apis.corsProxy + encodeURIComponent(`${APP_CONFIG.apis.invidious}/search?${params}`));
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -692,7 +692,7 @@ async function downloadFromSearchResult(videoId) {
     await fetchVideoDetails(url);
 }
 
-async function generateDownloadLink() {
+async function generatePublicLink() {
     if (!appState.currentVideoData.url) {
         showNotification('Error', 'No video selected', 'error');
         return;
@@ -778,14 +778,14 @@ function handleVideoPicker(pickerData) {
 function selectPickerVideo(index) {
     const video = window.currentPickerData.picker[index];
     appState.currentVideoData.url = video.url;
-    generateDownloadLink();
+    generatePublicLink();
     closePageModal();
 }
 
 function downloadPickerAudio() {
     appState.currentVideoData.url = window.currentPickerData.audio;
     appState.selectedFormat = 'mp3';
-    generateDownloadLink();
+    generatePublicLink();
     closePageModal();
 }
 
@@ -991,23 +991,6 @@ async function pasteFromClipboard() {
     } catch (err) {
         showNotification('Error', 'Could not access clipboard', 'error');
     }
-}
-
-function setPlatform(platform) {
-    appState.currentPlatform = platform;
-    elements.inputUrl.placeholder = `Search ${platform.charAt(0).toUpperCase() + platform.slice(1)} or paste URL...`;
-    elements.inputUrl.focus();
-    
-    // Highlight selected platform
-    document.querySelectorAll('.platform-item').forEach(item => {
-        item.style.background = 'rgba(255, 255, 255, 0.03)';
-        item.style.border = '1px solid var(--glass-border)';
-    });
-    
-    event.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)';
-    event.currentTarget.style.border = '1px solid rgba(102, 126, 234, 0.5)';
-    
-    showNotification('Platform Selected', `Now searching on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`);
 }
 
 function toggleTheme() {
@@ -1235,7 +1218,7 @@ function copyPublicLink() {
 
 function generateNewLink() {
     if (appState.currentVideoData.url) {
-        generateDownloadLink();
+        generatePublicLink();
     }
 }
 
@@ -1391,7 +1374,6 @@ window.downloadFromHistory = downloadFromHistory;
 window.toggleTheme = toggleTheme;
 window.changeLanguage = changeLanguage;
 window.pasteFromClipboard = pasteFromClipboard;
-window.setPlatform = setPlatform;
 window.processInput = processInput;
 window.closeVideoDetails = closeVideoDetails;
 window.closeSearchResults = closeSearchResults;
@@ -1409,7 +1391,7 @@ window.toggleMenu = toggleMenu;
 window.toggleLangDropdown = toggleLangDropdown;
 window.closeBottomSheet = closeBottomSheet;
 window.selectFormat = selectFormat;
-window.generateDownloadLink = generateDownloadLink;
+window.generatePublicLink = generatePublicLink;
 window.selectSearchResult = selectSearchResult;
 window.downloadFromSearchResult = downloadFromSearchResult;
 window.selectPickerVideo = selectPickerVideo;
