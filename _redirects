@@ -1,10 +1,6 @@
-# Redirect old URLs to new ones
-/old-path /new-path 301
+# API redirects
+/api/download/* /api/download 200
+/api/search/* /api/search 200
 
-# Redirect trailing slashes
-/about/ /about 301
-/contact/ /contact 301
-/privacy/ /privacy 301
-
-# Handle API routes
-/api/* /server.js 200
+# Handle client-side routing
+/* /index.html 200

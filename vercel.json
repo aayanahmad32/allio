@@ -1,13 +1,9 @@
 {
   "version": 2,
-  "name": "allio-pro",
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "public"
-      }
+      "src": "server.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -17,10 +13,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/server.js"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
