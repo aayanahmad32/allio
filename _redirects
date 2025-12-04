@@ -1,5 +1,12 @@
-# API Proxying
-/api/* /server.js 200
+# Force HTTPS
+/* https://allio-delta.vercel.app/:splat 301!
 
-# SPA Fallback
-/* /server.js 200
+# SPA fallback (important for client-side routing)
+# If someone visits /download/abc123 → serve index.html
+/download/* /index.html 200
+
+# Optional: Clean URLs (if you ever use /about → /#about)
+/about /index.html 200
+/privacy /index.html 200
+/contact /index.html 200
+/faq /index.html 200

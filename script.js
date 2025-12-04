@@ -1,10 +1,13 @@
-// --- GLOBAL VARIABLES & CONFIGURATION ---
+/* --- GLOBAL VARIABLES & CONFIGURATION --- */
 const APP_CONFIG = {
     name: 'ALLIO PRO',
     version: '2.0.0',
+    year: 2025,
     apis: {
         cobalt: 'https://api.cobalt.tools/api/json',
+        cobaltBackup: 'https://co.wuk.sh/api/json',
         invidious: 'https://vid.puffyan.us/api/v1',
+        invidiousBackup: 'https://yewtu.be/api/v1',
         youtubeOembed: 'https://www.youtube.com/oembed',
         corsProxy: 'https://corsproxy.io/?'
     },
@@ -18,7 +21,7 @@ const APP_CONFIG = {
     }
 };
 
-// --- STATE MANAGEMENT ---
+/* --- STATE MANAGEMENT --- */
 let appState = {
     currentMode: 'video',
     currentPlatform: '',
@@ -54,7 +57,7 @@ let appState = {
     cache: new Map()
 };
 
-// --- DOM ELEMENTS ---
+/* --- DOM ELEMENTS --- */
 const elements = {
     inputUrl: document.getElementById('inputUrl'),
     loadingSpinner: document.getElementById('loadingSpinner'),
@@ -94,7 +97,7 @@ const elements = {
     qrCodeContainer: document.getElementById('qrCodeContainer')
 };
 
-// --- UTILITY FUNCTIONS ---
+/* --- UTILITY FUNCTIONS --- */
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -150,7 +153,7 @@ function formatDuration(seconds) {
 }
 
 function formatDate(timestamp) {
-    const date = new Date(timestamp * 1000);
+    const date = new Date(timestamp);
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
     
@@ -194,7 +197,7 @@ function estimateFileSize(duration, quality, format) {
     return formatFileSize(estimatedBytes);
 }
 
-// --- CACHE MANAGEMENT ---
+/* --- CACHE MANAGEMENT --- */
 function getCacheKey(url, options = {}) {
     return `${url}_${JSON.stringify(options)}`;
 }
@@ -219,7 +222,7 @@ function setCachedData(key, data) {
     });
 }
 
-// --- RATE LIMITING ---
+/* --- RATE LIMITING --- */
 function checkRateLimit(api) {
     const now = Date.now();
     const timeDiff = now - appState.apiCallCount.lastReset;
@@ -236,7 +239,7 @@ function incrementApiCall(api) {
     appState.apiCallCount[api]++;
 }
 
-// --- PLATFORM DETECTION ---
+/* --- PLATFORM DETECTION --- */
 function detectPlatform(url) {
     const platformPatterns = {
         youtube: /youtube\.com|youtu\.be/,
@@ -262,7 +265,7 @@ function detectPlatform(url) {
     return 'unknown';
 }
 
-// --- URL PARSING ---
+/* --- URL PARSING --- */
 function extractYouTubeVideoId(url) {
     const patterns = [
         /youtube\.com\/watch\?v=([^&]+)/,
@@ -289,7 +292,7 @@ function extractTikTokId(url) {
     return match ? match[1] : null;
 }
 
-// --- API INTEGRATION ---
+/* --- API INTEGRATION --- */
 async function fetchFromCobalt(url, options = {}) {
     if (!checkRateLimit('cobalt')) {
         throw new Error('Rate limit exceeded. Please wait and try again.');
@@ -311,7 +314,8 @@ async function fetchFromCobalt(url, options = {}) {
     };
     
     try {
-        const response = await fetch(APP_CONFIG.apis.corsProxy + encodeURIComponent(APP_CONFIG.apis.cobalt), {
+        // Try primary API first
+        let response = await fetch(APP_CONFIG.apis.cobalt, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -319,6 +323,18 @@ async function fetchFromCobalt(url, options = {}) {
             },
             body: JSON.stringify(requestBody)
         });
+        
+        // If primary fails, try backup
+        if (!response.ok) {
+            response = await fetch(APP_CONFIG.apis.cobaltBackup, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+        }
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -355,7 +371,13 @@ async function searchYouTube(query, options = {}) {
     if (options.duration) params.append('duration', options.duration);
     
     try {
-        const response = await fetch(`${APP_CONFIG.apis.invidious}/search?${params}`);
+        // Try primary instance first
+        let response = await fetch(`${APP_CONFIG.apis.invidious}/search?${params}`);
+        
+        // If primary fails, try backup
+        if (!response.ok) {
+            response = await fetch(`${APP_CONFIG.apis.invidiousBackup}/search?${params}`);
+        }
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -395,7 +417,7 @@ async function fetchYouTubeMetadata(videoId) {
     }
 }
 
-// --- UI FUNCTIONS ---
+/* --- UI FUNCTIONS --- */
 function showLoadingSpinner(show = true) {
     if (show) {
         elements.loadingSpinner.classList.add('show');
@@ -433,7 +455,7 @@ function updateDownloadCount() {
     elements.downloadCount.textContent = `${count.toLocaleString()} Downloads Today`;
 }
 
-// --- CORE FUNCTIONS ---
+/* --- CORE FUNCTIONS --- */
 async function processInput() {
     const input = elements.inputUrl.value.trim();
     if (!input) {
@@ -724,6 +746,8 @@ async function generateDownloadLink() {
     // Show loading state
     downloadBtn.classList.add('loading');
     downloadBtn.disabled = true;
+    downloadBtn.querySelector('.btn-content').style.opacity = '0';
+    downloadBtn.querySelector('.btn-loading').classList.remove('hidden');
     
     try {
         const isAudio = appState.selectedFormat === 'mp3';
@@ -741,7 +765,7 @@ async function generateDownloadLink() {
         if (downloadData.status === 'picker') {
             // Handle multiple videos (playlists, carousels)
             handleVideoPicker(downloadData);
-        } else {
+        } else if (downloadData.url) {
             // Direct download
             const downloadInfo = {
                 id: generateUniqueId(),
@@ -751,7 +775,7 @@ async function generateDownloadLink() {
                 format: isAudio ? 'mp3' : 'mp4',
                 quality: quality,
                 downloadUrl: downloadData.url,
-                filename: downloadData.filename,
+                filename: downloadData.filename || appState.currentVideoData.title,
                 timestamp: Date.now()
             };
             
@@ -760,6 +784,8 @@ async function generateDownloadLink() {
             updateDownloadCount();
             
             showNotification('Success', 'Download link generated successfully');
+        } else {
+            throw new Error('No download URL received');
         }
     } catch (error) {
         console.error('Error generating download link:', error);
@@ -768,6 +794,8 @@ async function generateDownloadLink() {
         // Hide loading state
         downloadBtn.classList.remove('loading');
         downloadBtn.disabled = false;
+        downloadBtn.querySelector('.btn-content').style.opacity = '1';
+        downloadBtn.querySelector('.btn-loading').classList.add('hidden');
     }
 }
 
@@ -839,7 +867,7 @@ function triggerDirectDownload() {
     }
 }
 
-// --- HISTORY MANAGEMENT ---
+/* --- HISTORY MANAGEMENT --- */
 function saveToHistory(downloadInfo) {
     if (!appState.userSettings.saveHistory) return;
     
@@ -972,7 +1000,7 @@ function clearDownloadHistory() {
     }
 }
 
-// --- UI EVENT HANDLERS ---
+/* --- UI EVENT HANDLERS --- */
 function toggleMenu() {
     elements.menu.classList.toggle('show');
 }
@@ -1278,7 +1306,7 @@ function closeBottomSheet() {
     hideSection(elements.bottomSheet);
 }
 
-// --- QR CODE FUNCTIONALITY ---
+/* --- QR CODE FUNCTIONALITY --- */
 function generateQRCode(text) {
     // Simple QR code generation using a library would be ideal
     // For now, create a placeholder
@@ -1301,13 +1329,13 @@ function closeQrModal() {
     hideSection(elements.qrModal);
 }
 
-// --- SEARCH SUGGESTIONS ---
+/* --- SEARCH SUGGESTIONS --- */
 function searchSuggestion(query) {
     elements.inputUrl.value = query;
     processInput();
 }
 
-// --- EVENT LISTENERS ---
+/* --- EVENT LISTENERS --- */
 document.addEventListener('DOMContentLoaded', () => {
     // Load saved settings
     const savedSettings = localStorage.getItem('allioSettings');
@@ -1390,7 +1418,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 30000);
 });
 
-// --- EXPORT FUNCTIONS ---
+// Global error handler
+window.addEventListener('unhandledrejection', event => {
+    console.error('Unhandled promise rejection:', event.reason);
+    showNotification('Error', 'Something went wrong. Please try again.', 'error');
+    showLoadingSpinner(false);
+});
+
+// Network error detector
+window.addEventListener('online', () => {
+    showNotification('Connection Restored', 'You are back online', 'success');
+});
+
+window.addEventListener('offline', () => {
+    showNotification('No Connection', 'Please check your internet connection', 'error');
+});
+
+/* --- EXPORT FUNCTIONS --- */
 window.downloadFromPublicLink = downloadFromPublicLink;
 window.copyPublicLink = copyPublicLink;
 window.generateNewLink = generateNewLink;

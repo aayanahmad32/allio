@@ -1,8 +1,10 @@
 // --- SERVER.JS - NO PACKAGES REQUIRED ---
 const http = require('http');
+const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
+const querystring = require('querystring');
 
 // --- CONFIGURATION ---
 const CONFIG = {
@@ -18,26 +20,16 @@ const CONFIG = {
     ],
     apis: {
         cobalt: 'https://api.cobalt.tools/api/json',
-        cobaltBackup: 'https://cobalt-api.onrender.com/api/json',
-        y2mate: 'https://www.y2mate.com/mates/en/681/analyze',
+        cobaltBackup: 'https://co.wuk.sh/api/json',
+        invidious: 'https://vid.puffyan.us/api/v1',
+        invidiousBackup: 'https://yewtu.be/api/v1',
+        youtubeOembed: 'https://www.youtube.com/oembed',
+        y2mate: 'https://www.y2mate.com/mates/en681/analyze',
         y2mateBackup: 'https://yt1s.com/api/ajax/search',
         savefrom: 'https://sfrom.net/api/convert',
         ninebuddy: 'https://9xbuddy.org/api/json',
         odysee: 'https://odysee.com/api/v1/proxy',
-        invidious: 'https://vid.puffyan.us/api/v1',
-        invidiousBackup: 'https://yewtu.be/api/v1',
-        youtubeBackup: 'https://yt.lemnoslife.com/videos?part=snippet&id=',
-        nuxt: 'https://nuxt.djs.workers.dev/api',
-        co: 'https://co.wuk.sh/api/json',
-        snaptik: 'https://snaptik.app/abc?url=',
-        snaptikBackup: 'https://tikmate.online/download?url=',
-        tikmate: 'https://tikmate.online/download?url=',
-        instagram: 'https://ddinstagram.com/',
-        facebook: 'https://mbasic.facebook.com/',
-        twitter: 'https://tweethunt.com/api/v1/tw-dl',
-        reddit: 'https://v.redd.it/',
-        soundcloud: 'https://soundcloudmp3.org/',
-        dailymotion: 'https://www.dailymotion.com/player/metadata/video/'
+        nuxt: 'https://nuxt.djs.workers.dev/api'
     }
 };
 
@@ -247,8 +239,7 @@ class VideoDownloader {
         const apis = [
             () => this.downloadYouTubeCobalt(videoUrl, options),
             () => this.downloadYouTubeY2mate(videoUrl, options),
-            () => this.downloadYouTubeInvidious(videoUrl, options),
-            () => this.downloadYouTubeBackup(videoUrl, options)
+            () => this.downloadYouTubeInvidious(videoUrl, options)
         ];
 
         for (const api of apis) {
@@ -348,25 +339,6 @@ class VideoDownloader {
         throw new Error('Invidious failed');
     }
 
-    static async downloadYouTubeBackup(videoUrl, options) {
-        const videoId = this.extractYouTubeId(videoUrl);
-        const apiUrl = `${CONFIG.apis.youtubeBackup}${videoId}`;
-        
-        const response = await APIHandler.makeRequest(apiUrl);
-        
-        if (response.items && response.items[0]) {
-            return {
-                url: `https://redirector.googlevideo.com/videoplayback?id=${videoId}`,
-                filename: response.items[0].snippet?.title || 'video.mp4',
-                platform: 'youtube',
-                quality: options.vQuality || '720p',
-                format: 'mp4'
-            };
-        }
-
-        throw new Error('YouTube backup failed');
-    }
-
     static async downloadInstagram(videoUrl, options) {
         const apis = [
             () => this.downloadInstagramDirect(videoUrl, options),
@@ -402,8 +374,7 @@ class VideoDownloader {
     static async downloadTikTok(videoUrl, options) {
         const apis = [
             () => this.downloadTikTokSnaptik(videoUrl, options),
-            () => this.downloadTikTokMate(videoUrl, options),
-            () => this.downloadTikTokBackup(videoUrl, options)
+            () => this.downloadTikTokMate(videoUrl, options)
         ];
 
         for (const api of apis) {
@@ -452,8 +423,6 @@ class VideoDownloader {
 
         return null;
     }
-
-    // Add more platform methods as needed...
 }
 
 // --- HTTP SERVER ---
@@ -571,7 +540,7 @@ async function handleAPI(req, res, parsedUrl) {
         const platform = parsedUrl.query.platform || 'youtube';
         
         try {
-            // Search implementation here
+            // Search implementation
             const results = await searchVideos(query, platform);
             
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -601,12 +570,34 @@ async function handleAPI(req, res, parsedUrl) {
 
 // --- SEARCH FUNCTION ---
 async function searchVideos(query, platform) {
-    // Implementation for video search
-    return {
-        results: [],
-        total: 0,
-        platform: platform
-    };
+    const cacheKey = `search_${platform}_${query}`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
+
+    let results = [];
+    
+    if (platform === 'youtube') {
+        try {
+            const searchUrl = `${CONFIG.apis.invidious}/search?q=${encodeURIComponent(query)}&type=video`;
+            const response = await APIHandler.makeRequest(searchUrl);
+            results = response || [];
+        } catch (error) {
+            console.error('YouTube search failed:', error);
+            // Try backup instance
+            try {
+                const backupUrl = `${CONFIG.apis.invidiousBackup}/search?q=${encodeURIComponent(query)}&type=video`;
+                const response = await APIHandler.makeRequest(backupUrl);
+                results = response || [];
+            } catch (backupError) {
+                console.error('Backup YouTube search failed:', backupError);
+            }
+        }
+    }
+
+    cache.set(cacheKey, results);
+    return results;
 }
 
 // --- DOWNLOAD HANDLER ---

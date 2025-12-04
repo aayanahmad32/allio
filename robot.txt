@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+
+# Block sensitive paths
 Disallow: /api/
 Disallow: /download/
+
 Sitemap: https://allio-delta.vercel.app/sitemap.xml
