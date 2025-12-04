@@ -1,18 +1,13 @@
-// --- SERVER.JS - FIXED FOR VERCEL DEPLOYMENT ---
+// --- SERVER.JS - UPDATED FOR 2025 DEPLOYMENT ---
 const http = require('http');
 const https = require('https');
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
 
-// Check if we're in a serverless environment
-const isServerless = process.env.NODE_ENV === 'production' || process.env.VERCEL;
-
 // --- CONFIGURATION ---
 const CONFIG = {
     port: process.env.PORT || 3000,
-    maxRequests: 10000,
-    windowMs: 60000,
     apis: {
         cobalt: 'https://api.cobalt.tools/api/json',
         cobaltBackup: 'https://co.wuk.sh/api/json',
@@ -25,7 +20,6 @@ const CONFIG = {
 // --- CACHE SYSTEM ---
 class Cache {
     constructor() {
-        // In serverless, we'll use a simple in-memory cache
         this.cache = new Map();
         this.maxSize = 100;
     }
@@ -350,7 +344,7 @@ async function handleAPI(req, res, parsedUrl) {
         const platform = parsedUrl.query.platform || 'youtube';
         
         try {
-            // Simple search implementation
+            // Search implementation
             const results = await searchVideos(query, platform);
             
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -402,8 +396,6 @@ async function searchVideos(query, platform) {
                 results = response || [];
             } catch (backupError) {
                 console.error('Backup YouTube search failed:', backupError);
-                // Return empty results as fallback
-                results = [];
             }
         }
     }
@@ -437,24 +429,23 @@ async function handleDownload(req, res, parsedUrl) {
 }
 
 // --- START SERVER ---
-if (!isServerless) {
-    server.listen(CONFIG.port, () => {
-        console.log(`
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║    🚀 ALLIO PRO SERVER STARTED SUCCESSFULLY! 🚀               ║
 ║                                                              ║
-║    📍 Server running on: http://localhost:${CONFIG.port}        ║
-║    🌐 APIs Active                                              ║
+║    📍 Server running on: http://localhost:${PORT}           ║
+║    🌐 Multiple APIs Active                                 ║
 ║    💾 Cache Size: ${cache.maxSize} items                   ║
+║    📅 Updated: December 2025                              ║
 ║                                                              ║
 ╚════════════════════════════════════════════════════════════╝
-        `);
-    });
-}
+    `);
+});
 
 // Export for Vercel
 module.exports = (req, res) => {
-    // For Vercel serverless, we need to handle the request directly
     server.emit('request', req, res);
 };
