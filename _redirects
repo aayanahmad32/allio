@@ -1,12 +1,10 @@
-# Force HTTPS
-/* https://allio-delta.vercel.app/:splat 301!
+# Redirect old URLs to new ones
+/old-path /new-path 301
 
-# SPA fallback (important for client-side routing)
-# If someone visits /download/abc123 → serve index.html
-/download/* /index.html 200
+# Redirect trailing slashes
+/about/ /about 301
+/contact/ /contact 301
+/privacy/ /privacy 301
 
-# Optional: Clean URLs (if you ever use /about → /#about)
-/about /index.html 200
-/privacy /index.html 200
-/contact /index.html 200
-/faq /index.html 200
+# Handle API routes
+/api/* /server.js 200

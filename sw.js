@@ -1,7 +1,5 @@
-const CACHE_NAME = 'allio-pro-v17';
-const OFFLINE_PAGE = '/offline.html';
-
-const ASSETS = [
+const CACHE_NAME = 'allio-pro-cache-v1';
+const urlsToCache = [
   '/',
   '/index.html',
   '/style.css',
@@ -13,34 +11,54 @@ const ASSETS = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS);
-    })
-  );
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      );
+    caches.open(CACHE_NAME)
+    .then(cache => {
+      console.log('Opened cache');
+      return cache.addAll(urlsToCache);
     })
   );
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/index.html'))
-    );
-    return;
-  }
-  
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
+    caches.match(event.request)
+    .then(response => {
+      // Cache hit - return response
+      if (response) {
+        return response;
+      }
+      
+      return fetch(event.request).then(response => {
+        // Check if valid response
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+        
+        // Clone response since it can only be consumed once
+        const responseToCache = response.clone();
+        
+        caches.open(CACHE_NAME)
+          .then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+        
+        return response;
+      });
+    })
+  );
+});
+
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });

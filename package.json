@@ -1,23 +1,27 @@
 {
   "name": "allio-pro",
   "version": "2.0.0",
-  "description": "Premium Global Media Downloader - YouTube, Instagram, TikTok, Facebook, Twitter, Telegram & more",
+  "description": "ALLIO PRO - Premium Media Downloader",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "mkdir -p public && cp index.html style.css script.js manifest.json sw.js public/ && cp -r assets public/ 2>/dev/null || true",
+    "export": "npm run build"
   },
   "keywords": [
-    "video downloader",
-    "youtube downloader",
-    "tiktok downloader",
-    "instagram downloader",
-    "media converter",
-    "pwa downloader"
+    "video",
+    "downloader",
+    "media",
+    "youtube",
+    "tiktok",
+    "instagram"
   ],
   "author": "LoopLabs Tech",
   "license": "MIT",
   "engines": {
-    "node": ">=18.x"
-  }
+    "node": "14.x"
+  },
+  "dependencies": {},
+  "devDependencies": {}
 }

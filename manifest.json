@@ -1,25 +1,27 @@
 {
   "name": "ALLIO PRO - Premium Media Downloader",
   "short_name": "ALLIO PRO",
-  "description": "Download videos & music from YouTube, Instagram, TikTok, Facebook, Twitter, Telegram and 20+ platforms",
+  "description": "Download high-quality videos and music from all social media platforms",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050507",
+  "background_color": "#0f0c29",
   "theme_color": "#667eea",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s192/IMG_20251124_121644.jpg",
-      "sizes": "192x192",
-      "type": "image/png"
+      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s1024/IMG_20251124_121644.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg"
     },
     {
-      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s512/IMG_20251124_121644.jpg",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s32/IMG_20251124_121644.jpg",
+      "sizes": "32x32",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s16/IMG_20251124_121644.jpg",
+      "sizes": "16x16",
+      "type": "image/jpeg"
     }
-  ],
-  "categories": ["utilities", "productivity", "music", "video"],
-  "lang": "en",
-  "dir": "ltr"
+  ]
 }
