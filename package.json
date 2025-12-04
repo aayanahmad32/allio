@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "node -e \"require('fs').mkdirSync('public', { recursive: true }); require('fs').copyFileSync('index.html', 'public/index.html'); require('fs').copyFileSync('style.css', 'public/style.css'); require('fs').copyFileSync('script.js', 'public/script.js'); require('fs').copyFileSync('manifest.json', 'public/manifest.json'); require('fs').copyFileSync('sw.js', 'public/sw.js');\""
   },
   "keywords": [
     "video",
