@@ -248,7 +248,7 @@ const app = express();
 // --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API ROUTES ---
 app.get('/api/stats', (req, res) => {
@@ -348,7 +348,7 @@ async function searchVideos(query, platform) {
 
 // --- SERVE HTML FOR ALL OTHER ROUTES ---
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // --- START SERVER ---
