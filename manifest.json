@@ -1,7 +1,7 @@
 {
   "name": "ALLIO PRO - Premium Media Downloader",
   "short_name": "ALLIO PRO",
-  "description": "Download high-quality videos and music from all social media platforms",
+  "description": "The ultimate global media downloader for all social media platforms",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0c29",
@@ -11,17 +11,22 @@
     {
       "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s16/IMG_20251124_121644.jpg",
       "sizes": "16x16",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
       "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s32/IMG_20251124_121644.jpg",
       "sizes": "32x32",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
       "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjgjnVUGsr1aC-dGRtINVOeLzVAyNXUxnKwKKDlDBmraAq6w7Z7xgO7s7TRewODbFsmR4XKvFPaJBpDUhMMSgg6XNZQWCyX9w-GYU0Bi688PrV4lGyhTfVs6dfsq_4sK_Jbho4v-bNmK9NRdebNXpn_hdYf96qRuaYOkzRcQSGJZvY0S_dFY7w2pOCz_wuv/s1024/IMG_20251124_121644.jpg",
       "sizes": "1024x1024",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
-  ]
+  ],
+  "categories": ["utilities", "multimedia", "productivity"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
 }

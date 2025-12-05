@@ -1,32 +1,31 @@
 {
   "name": "allio-pro",
   "version": "2.0.0",
-  "description": "ALLIO PRO - Premium media downloader for all social media platforms",
+  "description": "Premium Media Downloader",
   "main": "server.js",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "build": "mkdir -p public && cp index.html public/ && cp style.css public/ && cp script.js public/ && cp manifest.json public/ && cp sw.js public/"
+    "dev": "nodemon server.js"
   },
   "keywords": [
-    "video downloader",
-    "mp3 downloader",
-    "youtube downloader",
-    "tiktok downloader",
-    "instagram downloader",
-    "facebook downloader",
-    "twitter downloader",
-    "telegram downloader",
-    "free media downloader",
-    "online video converter"
+    "media",
+    "downloader",
+    "video",
+    "audio",
+    "youtube",
+    "instagram",
+    "tiktok"
   ],
   "author": "LoopLabs Tech",
   "license": "MIT",
-  "engines": {
-    "node": "14.x"
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/allio-pro"
+  "devDependencies": {
+    "nodemon": "^2.0.22"
   }
 }

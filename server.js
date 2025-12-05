@@ -1,9 +1,11 @@
-// --- SERVER.JS - UPDATED FOR 2025 DEPLOYMENT ---
-const http = require('http');
-const https = require('https');
-const url = require('url');
-const fs = require('fs');
+// --- SERVER.JS - UPDATED FOR VERCEL DEPLOYMENT ---
+const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
+const url = require('url');
+const cors = require('cors');
 
 // --- CONFIGURATION ---
 const CONFIG = {
@@ -240,137 +242,77 @@ class VideoDownloader {
     }
 }
 
-// --- HTTP SERVER ---
-const server = http.createServer(async (req, res) => {
-    const clientIP = req.headers['x-forwarded-for'] || 
-                    req.headers['x-real-ip'] || 
-                    req.connection.remoteAddress || 
-                    '127.0.0.1';
+// --- CREATE EXPRESS APP ---
+const app = express();
 
-    // Enable CORS for all requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.setHeader('Access-Control-Max-Age', '86400');
+// --- MIDDLEWARE ---
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname)));
 
-    if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        res.end();
-        return;
-    }
+// --- API ROUTES ---
+app.get('/api/stats', (req, res) => {
+    res.json({
+        activeConnections: app.connections || 0,
+        cacheSize: cache.cache.size,
+        uptime: process.uptime()
+    });
+});
 
-    const parsedUrl = url.parse(req.url, true);
-    const pathname = parsedUrl.pathname;
-
+app.post('/api/download', async (req, res) => {
     try {
-        // Static file serving
-        if (pathname === '/' || pathname === '/index.html') {
-            serveFile(res, path.join(__dirname, 'index.html'), 'text/html');
-        } else if (pathname === '/style.css') {
-            serveFile(res, path.join(__dirname, 'style.css'), 'text/css');
-        } else if (pathname === '/script.js') {
-            serveFile(res, path.join(__dirname, 'script.js'), 'application/javascript');
-        } else if (pathname === '/manifest.json') {
-            serveFile(res, path.join(__dirname, 'manifest.json'), 'application/json');
-        } else if (pathname === '/sw.js') {
-            serveFile(res, path.join(__dirname, 'sw.js'), 'application/javascript');
-        } 
-        // API Routes
-        else if (pathname.startsWith('/api/')) {
-            await handleAPI(req, res, parsedUrl);
-        }
-        // Download route
-        else if (pathname.startsWith('/download/')) {
-            await handleDownload(req, res, parsedUrl);
-        }
-        // Fallback to index.html for SPA
-        else {
-            serveFile(res, path.join(__dirname, 'index.html'), 'text/html');
-        }
+        const { url, options = {} } = req.body;
+        const result = await VideoDownloader.downloadVideo(url, options);
+        
+        res.json({
+            success: true,
+            data: result
+        });
     } catch (error) {
-        console.error('Server error:', error);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-            error: 'Internal server error',
-            message: error.message
-        }));
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
     }
 });
 
-// --- FILE SERVING FUNCTION ---
-function serveFile(res, filePath, contentType) {
-    fs.readFile(filePath, (err, data) => {
-        if (err) {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'File not found' }));
-            return;
-        }
-
-        res.writeHead(200, { 
-            'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=3600'
-        });
-        res.end(data);
-    });
-}
-
-// --- API HANDLER ---
-async function handleAPI(req, res, parsedUrl) {
-    const pathname = parsedUrl.pathname;
+app.get('/api/search', async (req, res) => {
+    const query = req.query.q;
+    const platform = req.query.platform || 'youtube';
     
-    if (pathname === '/api/download' && req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', async () => {
-            try {
-                const data = JSON.parse(body);
-                const result = await VideoDownloader.downloadVideo(data.url, data.options || {});
-                
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    success: true,
-                    data: result
-                }));
-            } catch (error) {
-                res.writeHead(400, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    success: false,
-                    error: error.message
-                }));
-            }
-        });
-    } else if (pathname === '/api/search' && req.method === 'GET') {
-        const query = parsedUrl.query.q;
-        const platform = parsedUrl.query.platform || 'youtube';
+    try {
+        // Search implementation
+        const results = await searchVideos(query, platform);
         
-        try {
-            // Search implementation
-            const results = await searchVideos(query, platform);
-            
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-                success: true,
-                data: results
-            }));
-        } catch (error) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({
-                success: false,
-                error: error.message
-            }));
-        }
-    } else if (pathname === '/api/stats') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-            activeConnections: server.connections,
-            cacheSize: cache.cache.size,
-            uptime: process.uptime()
-        }));
-    } else {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'API endpoint not found' }));
+        res.json({
+            success: true,
+            data: results
+        });
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
     }
-}
+});
+
+app.get('/download/:id', (req, res) => {
+    const downloadId = req.params.id;
+    
+    if (!downloadId) {
+        return res.status(400).json({ error: 'Download ID required' });
+    }
+
+    // Get download info from cache
+    const downloadInfo = cache.get(`download_${downloadId}`);
+    
+    if (!downloadInfo) {
+        return res.status(404).json({ error: 'Download not found or expired' });
+    }
+
+    // Redirect to actual download URL
+    res.redirect(302, downloadInfo.url);
+});
 
 // --- SEARCH FUNCTION ---
 async function searchVideos(query, platform) {
@@ -404,48 +346,28 @@ async function searchVideos(query, platform) {
     return results;
 }
 
-// --- DOWNLOAD HANDLER ---
-async function handleDownload(req, res, parsedUrl) {
-    const downloadId = parsedUrl.pathname.split('/download/')[1];
-    
-    if (!downloadId) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Download ID required' }));
-        return;
-    }
-
-    // Get download info from cache
-    const downloadInfo = cache.get(`download_${downloadId}`);
-    
-    if (!downloadInfo) {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Download not found or expired' }));
-        return;
-    }
-
-    // Redirect to actual download URL
-    res.writeHead(302, { Location: downloadInfo.url });
-    res.end();
-}
-
-// --- START SERVER ---
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`
-╔════════════════════════════════════════════════════════════╗
-║                                                              ║
-║    🚀 ALLIO PRO SERVER STARTED SUCCESSFULLY! 🚀               ║
-║                                                              ║
-║    📍 Server running on: http://localhost:${PORT}           ║
-║    🌐 Multiple APIs Active                                 ║
-║    💾 Cache Size: ${cache.maxSize} items                   ║
-║    📅 Updated: December 2025                              ║
-║                                                              ║
-╚════════════════════════════════════════════════════════════╝
-    `);
+// --- SERVE HTML FOR ALL OTHER ROUTES ---
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// --- START SERVER ---
+if (require.main === module) {
+    app.listen(CONFIG.port, () => {
+        console.log(`
+    ╔════════════════════════════════════════════════════════════╗
+    ║                                                              ║
+    ║    🚀 ALLIO PRO SERVER STARTED SUCCESSFULLY! 🚀               ║
+    ║                                                              ║
+    ║    📍 Server running on: http://localhost:${CONFIG.port}           ║
+    ║    🌐 Multiple APIs Active                                 ║
+    ║    💾 Cache Size: ${cache.maxSize} items                   ║
+    ║    📅 Updated: December 2025                              ║
+    ║                                                              ║
+    ╚════════════════════════════════════════════════════════════╝
+        `);
+    });
+}
+
 // Export for Vercel
-module.exports = (req, res) => {
-    server.emit('request', req, res);
-};
+module.exports = app;
