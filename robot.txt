@@ -1,12 +1,4 @@
 User-agent: *
 Allow: /
 
-# Host
-Host: https://allio-delta.vercel.app
-
-# Sitemaps
 Sitemap: https://allio-delta.vercel.app/sitemap.xml
-
-# Disallow specific paths if needed
-Disallow: /api/
-Disallow: /download/
