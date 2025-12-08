@@ -155,12 +155,12 @@
             <p style="color:var(--text-muted);">Download High-Quality Media from All Social Media Platforms</p>
             
             <div class="search-wrapper">
-                <button class="paste-btn" onclick="pasteFromClipboard()">
+                <button class="paste-btn" id="pasteBtn" onclick="pasteFromClipboard()">
                     <i class="fas fa-paste"></i>
                     Paste
                 </button>
                 <input type="text" class="main-input" id="inputUrl" placeholder="Paste URL or Search Song Name...">
-                <button class="search-btn" onclick="processInput()">FETCH</button>
+                <button class="search-btn" id="searchBtn" onclick="processInput()">FETCH</button>
             </div>
             
             <!-- Live Stats Bar -->

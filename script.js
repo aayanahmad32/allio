@@ -5,8 +5,10 @@
 const CONFIG = {
     apis: {
         cobalt: 'https://api.cobalt.tools/api/json',
-        youtube: 'https://www.youtube.com/oembed'
-    }
+        youtube: 'https://www.youtube.com/oembed',
+        youtubeSearch: 'https://www.googleapis.com/youtube/v3/search'
+    },
+    youtubeApiKey: 'AIzaSyC7u-2sK5O6iQj5B-0X6Y7Z8A9B0C1D2E3F' // Replace with your actual YouTube API key
 };
 
 // State Management
@@ -20,38 +22,55 @@ let appState = {
 // DOM Elements
 const elements = {
     input: document.getElementById('inputUrl'),
-    searchBtn: document.querySelector('.search-btn'),
-    pasteBtn: document.querySelector('.paste-btn'),
+    searchBtn: document.getElementById('searchBtn'),
+    pasteBtn: document.getElementById('pasteBtn'),
     videoSection: document.getElementById('videoDetailsSection'),
     searchSection: document.getElementById('searchSection'),
     publicLinkSection: document.getElementById('publicLinkSection'),
     historySection: document.getElementById('downloadHistorySection'),
     resultSection: document.getElementById('searchResultsSection'),
     spinner: document.getElementById('loadingSpinner'),
-    notification: document.getElementById('notification')
+    notification: document.getElementById('notification'),
+    downloadBtn: document.getElementById('downloadVideoBtn')
 };
 
 // ===== UTILITY FUNCTIONS =====
 
 function showSpinner(show = true) {
-    elements.spinner.classList.toggle('show', show);
+    if (elements.spinner) {
+        elements.spinner.classList.toggle('show', show);
+    }
 }
 
 function showNotification(title, message, type = 'success') {
     const notif = elements.notification;
-    notif.querySelector('.notification-title').textContent = title;
-    notif.querySelector('.notification-message').textContent = message;
+    if (!notif) return;
     
+    const titleEl = notif.querySelector('.notification-title');
+    const messageEl = notif.querySelector('.notification-message');
     const icon = notif.querySelector('.notification-icon i');
-    icon.className = type === 'success' ? 'fas fa-check' : 'fas fa-exclamation-triangle';
+    
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message;
+    
+    if (icon) {
+        icon.className = type === 'success' ? 'fas fa-check' : 'fas fa-exclamation-triangle';
+    }
     
     notif.classList.add('show');
     setTimeout(() => notif.classList.remove('show'), 3000);
 }
 
 function hideAllSections() {
-    [elements.videoSection, elements.searchSection, elements.publicLinkSection, 
-     elements.historySection, elements.resultSection].forEach(el => {
+    const sections = [
+        elements.videoSection, 
+        elements.searchSection, 
+        elements.publicLinkSection, 
+        elements.historySection, 
+        elements.resultSection
+    ];
+    
+    sections.forEach(el => {
         if (el) el.classList.add('hidden');
     });
 }
@@ -131,6 +150,35 @@ async function fetchVideoFromCobalt(url, options = {}) {
     }
 }
 
+// ===== YOUTUBE SEARCH FUNCTIONALITY =====
+
+async function searchYouTube(query) {
+    try {
+        const response = await fetch(`${CONFIG.apis.youtubeSearch}?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${CONFIG.youtubeApiKey}`);
+        
+        if (!response.ok) {
+            throw new Error('YouTube search failed');
+        }
+        
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            return data.items.map(item => ({
+                id: item.id.videoId,
+                title: item.snippet.title,
+                channel: item.snippet.channelTitle,
+                thumbnail: item.snippet.thumbnails.high.url,
+                platform: 'youtube'
+            }));
+        }
+        
+        return [];
+    } catch (error) {
+        console.error('YouTube Search Error:', error);
+        return [];
+    }
+}
+
 // ===== VIDEO DETAILS =====
 
 async function loadVideoDetails(url) {
@@ -180,10 +228,15 @@ async function loadVideoDetails(url) {
 function displayVideoDetails() {
     const video = appState.currentVideo;
     
-    document.getElementById('videoThumbnail').src = video.thumbnail;
-    document.getElementById('videoTitle').textContent = video.title;
-    document.getElementById('videoChannel').textContent = video.author || video.platform;
-    document.getElementById('videoPlatform').textContent = video.platform.toUpperCase();
+    const thumbnail = document.getElementById('videoThumbnail');
+    const title = document.getElementById('videoTitle');
+    const channel = document.getElementById('videoChannel');
+    const platform = document.getElementById('videoPlatform');
+    
+    if (thumbnail) thumbnail.src = video.thumbnail;
+    if (title) title.textContent = video.title;
+    if (channel) channel.textContent = video.author || video.platform;
+    if (platform) platform.textContent = video.platform.toUpperCase();
     
     // Generate format options
     generateFormatOptions();
@@ -221,7 +274,7 @@ function selectFormat(format, quality, element) {
 // ===== DOWNLOAD LINK GENERATION =====
 
 async function generateDownloadLink() {
-    const btn = document.getElementById('downloadVideoBtn');
+    const btn = elements.downloadBtn;
     if (!btn || !appState.currentVideo) return;
     
     // Show loading state
@@ -267,12 +320,114 @@ async function generateDownloadLink() {
 }
 
 function displayPublicLink(item) {
-    document.getElementById('downloadTitle').textContent = item.title;
-    document.getElementById('downloadPlatform').textContent = item.platform.toUpperCase();
-    document.getElementById('downloadFormatQuality').textContent = `${item.format.toUpperCase()} • ${item.quality}p`;
-    document.getElementById('publicLinkInput').value = item.url;
+    const title = document.getElementById('downloadTitle');
+    const platform = document.getElementById('downloadPlatform');
+    const formatQuality = document.getElementById('downloadFormatQuality');
+    const linkInput = document.getElementById('publicLinkInput');
+    
+    if (title) title.textContent = item.title;
+    if (platform) platform.textContent = item.platform.toUpperCase();
+    if (formatQuality) formatQuality.textContent = `${item.format.toUpperCase()} • ${item.quality}p`;
+    if (linkInput) linkInput.value = item.url;
     
     showSection(elements.publicLinkSection);
+}
+
+// ===== SEARCH FUNCTIONALITY =====
+
+async function performSearch(query) {
+    showSpinner(true);
+    showSection(elements.resultSection);
+    
+    // Show loading skeleton
+    const skeleton = document.getElementById('searchLoadingSkeleton');
+    const container = document.getElementById('searchResultsContainer');
+    const emptyState = document.getElementById('searchEmptyState');
+    
+    if (skeleton) skeleton.classList.remove('hidden');
+    if (container) container.innerHTML = '';
+    if (emptyState) emptyState.classList.add('hidden');
+    
+    try {
+        // Try to detect if it's a URL first
+        const urlPattern = /^https?:\/\/.+/i;
+        
+        if (urlPattern.test(query)) {
+            // It's a URL, load video details directly
+            await loadVideoDetails(query);
+            return;
+        }
+        
+        // It's a search query, search YouTube
+        const results = await searchYouTube(query);
+        
+        if (skeleton) skeleton.classList.add('hidden');
+        
+        if (results.length > 0) {
+            displaySearchResults(results);
+        } else {
+            if (emptyState) emptyState.classList.remove('hidden');
+        }
+        
+    } catch (error) {
+        showNotification('Error', error.message, 'error');
+        if (skeleton) skeleton.classList.add('hidden');
+        if (emptyState) emptyState.classList.remove('hidden');
+    } finally {
+        showSpinner(false);
+    }
+}
+
+function displaySearchResults(results) {
+    const container = document.getElementById('searchResultsContainer');
+    if (!container) return;
+    
+    container.innerHTML = results.map(item => `
+        <div class="search-result-card" onclick="loadVideoFromSearch('${item.id}')">
+            <div class="result-thumbnail">
+                <img src="${item.thumbnail}" alt="${item.title}">
+                <div class="platform-badge">
+                    <i class="fab fa-youtube"></i>
+                </div>
+            </div>
+            <div class="result-info">
+                <div class="result-title">${item.title}</div>
+                <div class="result-meta">
+                    <div class="channel-name">
+                        <i class="fas fa-user"></i>
+                        <span>${item.channel}</span>
+                    </div>
+                </div>
+            </div>
+            <button class="quick-download-btn" onclick="event.stopPropagation(); quickDownload('${item.id}')">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+async function loadVideoFromSearch(videoId) {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    await loadVideoDetails(url);
+}
+
+async function quickDownload(videoId) {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    
+    try {
+        const downloadData = await fetchVideoFromCobalt(url, {
+            quality: '720',
+            isAudio: false
+        });
+        
+        if (downloadData.url) {
+            // Open download link in new tab
+            window.open(downloadData.url, '_blank');
+            showNotification('Success', 'Download started!');
+        }
+    } catch (error) {
+        showNotification('Error', error.message, 'error');
+    }
 }
 
 // ===== HISTORY MANAGEMENT =====
@@ -343,25 +498,21 @@ async function processInput() {
     const input = elements.input.value.trim();
     
     if (!input) {
-        showNotification('Error', 'Please enter a URL', 'error');
+        showNotification('Error', 'Please enter a URL or search query', 'error');
         return;
     }
     
-    const urlPattern = /^https?:\/\/.+/i;
-    
-    if (urlPattern.test(input)) {
-        await loadVideoDetails(input);
-    } else {
-        showNotification('Error', 'Please enter a valid URL', 'error');
-    }
+    await performSearch(input);
 }
 
 async function pasteFromClipboard() {
     try {
         const text = await navigator.clipboard.readText();
-        elements.input.value = text;
-        showNotification('Success', 'URL pasted!');
-        await processInput();
+        if (elements.input) {
+            elements.input.value = text;
+            showNotification('Success', 'URL pasted!');
+            await processInput();
+        }
     } catch (err) {
         showNotification('Error', 'Could not access clipboard', 'error');
     }
@@ -371,28 +522,48 @@ async function pasteFromClipboard() {
 
 function copyPublicLink() {
     const input = document.getElementById('publicLinkInput');
-    input.select();
-    document.execCommand('copy');
-    showNotification('Success', 'Link copied!');
+    if (input) {
+        input.select();
+        document.execCommand('copy');
+        showNotification('Success', 'Link copied!');
+    }
 }
 
 function triggerDirectDownload() {
-    const url = document.getElementById('publicLinkInput').value;
+    const url = document.getElementById('publicLinkInput')?.value;
     if (url) {
         window.open(url, '_blank');
         showNotification('Success', 'Download started!');
     }
 }
 
+function shareDownloadLink() {
+    const url = document.getElementById('publicLinkInput')?.value;
+    if (url && navigator.share) {
+        navigator.share({
+            title: 'Check out this video!',
+            url: url
+        });
+    } else if (url) {
+        copyPublicLink();
+    }
+}
+
 function toggleMenu() {
-    document.getElementById('menu')?.classList.toggle('show');
+    const menu = document.getElementById('menu');
+    if (menu) menu.classList.toggle('show');
 }
 
 function toggleLangDropdown() {
-    document.getElementById('langDropdown')?.classList.toggle('show');
+    const dropdown = document.getElementById('langDropdown');
+    if (dropdown) dropdown.classList.toggle('show');
 }
 
 function closeVideoDetails() {
+    showSection(elements.searchSection);
+}
+
+function closeSearchResults() {
     showSection(elements.searchSection);
 }
 
@@ -410,8 +581,11 @@ function toggleTheme() {
 
 function changeLanguage(lang) {
     const langNames = { en: 'English', hi: 'हिन्दी', es: 'Español' };
-    document.getElementById('currentLang').textContent = lang.toUpperCase();
-    document.getElementById('langDropdown')?.classList.remove('show');
+    const currentLang = document.getElementById('currentLang');
+    const dropdown = document.getElementById('langDropdown');
+    
+    if (currentLang) currentLang.textContent = lang.toUpperCase();
+    if (dropdown) dropdown.classList.remove('show');
     showNotification('Language Changed', `Switched to ${langNames[lang]}`);
     localStorage.setItem('language', lang);
 }
@@ -419,11 +593,13 @@ function changeLanguage(lang) {
 // ===== MODALS & SETTINGS =====
 
 function openSettings() {
-    document.getElementById('settingsModal')?.classList.add('show');
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.add('show');
 }
 
 function closeSettings() {
-    document.getElementById('settingsModal')?.classList.remove('show');
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.remove('show');
 }
 
 function showPage(page) {
@@ -501,14 +677,21 @@ function showPage(page) {
     
     const pageData = pages[page];
     if (pageData) {
-        document.getElementById('pageModalTitle').textContent = pageData.title;
-        document.getElementById('pageModalContent').innerHTML = pageData.content;
-        document.getElementById('pageModal')?.classList.add('show');
+        const modal = document.getElementById('pageModal');
+        const title = document.getElementById('pageModalTitle');
+        const content = document.getElementById('pageModalContent');
+        
+        if (modal && title && content) {
+            title.textContent = pageData.title;
+            content.innerHTML = pageData.content;
+            modal.classList.add('show');
+        }
     }
 }
 
 function closePageModal() {
-    document.getElementById('pageModal')?.classList.remove('show');
+    const modal = document.getElementById('pageModal');
+    if (modal) modal.classList.remove('show');
 }
 
 function shareApp() {
@@ -520,26 +703,32 @@ function shareApp() {
         });
     } else {
         showPage('share');
-        document.getElementById('pageModalTitle').textContent = 'Share ALLIO PRO';
-        document.getElementById('pageModalContent').innerHTML = `
-            <div class="page-content">
-                <h3>Share with Friends</h3>
-                <p>Help your friends discover the best media downloader!</p>
-                
-                <div class="share-options">
-                    <button class="share-btn whatsapp" onclick="shareViaWhatsApp()">
-                        <i class="fab fa-whatsapp"></i> WhatsApp
-                    </button>
-                    <button class="share-btn telegram" onclick="shareViaTelegram()">
-                        <i class="fab fa-telegram"></i> Telegram
-                    </button>
-                    <button class="share-btn copy" onclick="copyShareLink()">
-                        <i class="fas fa-copy"></i> Copy Link
-                    </button>
+        const modal = document.getElementById('pageModal');
+        const title = document.getElementById('pageModalTitle');
+        const content = document.getElementById('pageModalContent');
+        
+        if (modal && title && content) {
+            title.textContent = 'Share ALLIO PRO';
+            content.innerHTML = `
+                <div class="page-content">
+                    <h3>Share with Friends</h3>
+                    <p>Help your friends discover the best media downloader!</p>
+                    
+                    <div class="share-options">
+                        <button class="share-btn whatsapp" onclick="shareViaWhatsApp()">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </button>
+                        <button class="share-btn telegram" onclick="shareViaTelegram()">
+                            <i class="fab fa-telegram"></i> Telegram
+                        </button>
+                        <button class="share-btn copy" onclick="copyShareLink()">
+                            <i class="fas fa-copy"></i> Copy Link
+                        </button>
+                    </div>
                 </div>
-            </div>
-        `;
-        document.getElementById('pageModal')?.classList.add('show');
+            `;
+            modal.classList.add('show');
+        }
     }
 }
 
@@ -587,12 +776,10 @@ function resetDefaultSettings() {
 // ===== SEARCH & SUGGESTIONS =====
 
 function searchSuggestion(query) {
-    elements.input.value = query;
-    processInput();
-}
-
-function closeSearchResults() {
-    showSection(elements.searchSection);
+    if (elements.input) {
+        elements.input.value = query;
+        processInput();
+    }
 }
 
 // ===== EVENT LISTENERS =====
@@ -606,27 +793,36 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const savedLang = localStorage.getItem('language');
     if (savedLang) {
-        document.getElementById('currentLang').textContent = savedLang.toUpperCase();
+        const currentLang = document.getElementById('currentLang');
+        if (currentLang) currentLang.textContent = savedLang.toUpperCase();
     }
     
     // Search button
-    elements.searchBtn?.addEventListener('click', processInput);
+    if (elements.searchBtn) {
+        elements.searchBtn.addEventListener('click', processInput);
+    }
     
     // Paste button
-    elements.pasteBtn?.addEventListener('click', pasteFromClipboard);
+    if (elements.pasteBtn) {
+        elements.pasteBtn.addEventListener('click', pasteFromClipboard);
+    }
     
     // Enter key on input
-    elements.input?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') processInput();
-    });
+    if (elements.input) {
+        elements.input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processInput();
+        });
+    }
     
     // Close dropdowns on outside click
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.lang-toggle')) {
-            document.getElementById('langDropdown')?.classList.remove('show');
+            const dropdown = document.getElementById('langDropdown');
+            if (dropdown) dropdown.classList.remove('show');
         }
         if (!e.target.closest('.menu-btn')) {
-            document.getElementById('menu')?.classList.remove('show');
+            const menu = document.getElementById('menu');
+            if (menu) menu.classList.remove('show');
         }
     });
     
@@ -650,6 +846,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== GLOBAL FUNCTIONS =====
 
+// Make functions globally available
 window.processInput = processInput;
 window.pasteFromClipboard = pasteFromClipboard;
 window.generateDownloadLink = generateDownloadLink;
@@ -676,3 +873,18 @@ window.shareViaTelegram = shareViaTelegram;
 window.copyShareLink = copyShareLink;
 window.searchSuggestion = searchSuggestion;
 window.closeSearchResults = closeSearchResults;
+window.loadVideoFromSearch = loadVideoFromSearch;
+window.quickDownload = quickDownload;
+
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('ServiceWorker registration successful');
+            })
+            .catch(err => {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+    });
+}

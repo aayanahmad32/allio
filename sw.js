@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allio-pro-v2';
+const CACHE_NAME = 'allio-pro-v3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event
+// Activate Event - Clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -27,11 +27,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event
+// Fetch Event - Network first for API, Cache first for UI
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // API requests should bypass cache
+  // Don't cache API calls
   if (url.pathname.startsWith('/api/')) {
     return;
   }
