@@ -4,11 +4,11 @@
 // Configuration
 const CONFIG = {
     apis: {
-        cobalt: 'https://api.cobalt.tools/api/json',
-        youtube: 'https://www.youtube.com/oembed',
-        youtubeSearch: 'https://www.googleapis.com/youtube/v3/search'
+        cobalt: '/api/download', // Using backend proxy
+        youtube: '/api/youtube-metadata', // Using backend proxy
+        youtubeSearch: '/api/youtube-search' // Using backend proxy
     },
-    youtubeApiKey: 'AIzaSyC7u-2sK5O6iQj5B-0X6Y7Z8A9B0C1D2E3F' // Replace with your actual YouTube API key
+    youtubeApiKey: 'AIzaSyC7u-2sK5O6iQj5B-0X6Y7Z8A9B0C1D2E3F' // Will be used by backend
 };
 
 // State Management
@@ -113,28 +113,50 @@ function extractYouTubeId(url) {
     return null;
 }
 
+// ===== URL VALIDATION =====
+
+function isValidUrl(string) {
+    try {
+        const url = new URL(string);
+        return url.protocol === "http:" || url.protocol === "https:";
+    } catch (_) {
+        return false;
+    }
+}
+
+function validateAndProcessUrl(url) {
+    if (!isValidUrl(url)) {
+        throw new Error('Invalid URL format. Please enter a valid URL.');
+    }
+    
+    const platform = detectPlatform(url);
+    if (platform === 'unknown') {
+        throw new Error('Platform not supported. Supported platforms: YouTube, Instagram, TikTok, Facebook, Twitter, etc.');
+    }
+    
+    return { url, platform };
+}
+
 // ===== CORE DOWNLOAD FUNCTIONALITY =====
 
 async function fetchVideoFromCobalt(url, options = {}) {
     try {
+        // Use backend proxy instead of direct API call
         const response = await fetch(CONFIG.apis.cobalt, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 url: url,
-                vCodec: 'h264',
-                vQuality: options.quality || '720',
-                aFormat: 'mp3',
-                isAudioOnly: options.isAudio || false,
-                filenamePattern: 'pretty'
+                quality: options.quality || '720',
+                isAudio: options.isAudio || false
             })
         });
         
         if (!response.ok) {
-            throw new Error('API request failed');
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'API request failed');
         }
         
         const data = await response.json();
@@ -154,7 +176,8 @@ async function fetchVideoFromCobalt(url, options = {}) {
 
 async function searchYouTube(query) {
     try {
-        const response = await fetch(`${CONFIG.apis.youtubeSearch}?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${CONFIG.youtubeApiKey}`);
+        // Use backend proxy instead of direct API call
+        const response = await fetch(`${CONFIG.apis.youtubeSearch}?q=${encodeURIComponent(query)}&maxResults=10`);
         
         if (!response.ok) {
             throw new Error('YouTube search failed');
@@ -163,13 +186,7 @@ async function searchYouTube(query) {
         const data = await response.json();
         
         if (data.items && data.items.length > 0) {
-            return data.items.map(item => ({
-                id: item.id.videoId,
-                title: item.snippet.title,
-                channel: item.snippet.channelTitle,
-                thumbnail: item.snippet.thumbnails.high.url,
-                platform: 'youtube'
-            }));
+            return data.items;
         }
         
         return [];
@@ -185,31 +202,29 @@ async function loadVideoDetails(url) {
     showSpinner(true);
     
     try {
-        const platform = detectPlatform(url);
-        
-        if (platform === 'unknown') {
-            throw new Error('Platform not supported');
-        }
+        const { url: validatedUrl, platform } = validateAndProcessUrl(url);
         
         appState.currentVideo = {
-            url: url,
+            url: validatedUrl,
             platform: platform,
             title: 'Loading...',
             thumbnail: 'https://via.placeholder.com/800x450?text=Video'
         };
         
-        // Get video metadata
+        // Get video metadata using backend proxy
         if (platform === 'youtube') {
-            const videoId = extractYouTubeId(url);
+            const videoId = extractYouTubeId(validatedUrl);
             if (videoId) {
                 try {
-                    const response = await fetch(`${CONFIG.apis.youtube}?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-                    const data = await response.json();
-                    appState.currentVideo.title = data.title || 'YouTube Video';
-                    appState.currentVideo.thumbnail = data.thumbnail_url || appState.currentVideo.thumbnail;
-                    appState.currentVideo.author = data.author_name || 'Unknown';
+                    const response = await fetch(`${CONFIG.apis.youtube}?url=${encodeURIComponent(validatedUrl)}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        appState.currentVideo.title = data.title || 'YouTube Video';
+                        appState.currentVideo.thumbnail = data.thumbnail_url || appState.currentVideo.thumbnail;
+                        appState.currentVideo.author = data.author_name || 'Unknown';
+                    }
                 } catch (e) {
-                    console.log('Could not fetch metadata:', e);
+                    console.warn('Could not fetch metadata:', e);
                 }
             }
         }
