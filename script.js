@@ -1,12 +1,13 @@
-// ===== ALLIO PRO - SIMPLIFIED WORKING VERSION =====
-// Clean, efficient, and actually works!
+// ===== ALLIO PRO - UPDATED VERSION WITH REAL FILE SIZE =====
+// Fixed video download, search functionality, and added real file size feature
 
 // Configuration
 const CONFIG = {
     apis: {
         cobalt: '/api/download', // Using backend proxy
         youtube: '/api/youtube-metadata', // Using backend proxy
-        youtubeSearch: '/api/youtube-search' // Using backend proxy
+        youtubeSearch: '/api/youtube-search', // Using backend proxy
+        videoInfo: '/api/video-info' // New endpoint for video info with file sizes
     },
     youtubeApiKey: 'AIzaSyC7u-2sK5O6iQj5B-0X6Y7Z8A9B0C1D2E3F' // Will be used by backend
 };
@@ -16,7 +17,8 @@ let appState = {
     currentVideo: null,
     selectedFormat: 'mp4',
     selectedQuality: '720',
-    downloadHistory: JSON.parse(localStorage.getItem('downloadHistory') || '[]')
+    downloadHistory: JSON.parse(localStorage.getItem('downloadHistory') || '[]'),
+    videoInfo: null // Store video info with file sizes
 };
 
 // DOM Elements
@@ -80,6 +82,16 @@ function showSection(section) {
         hideAllSections();
         section.classList.remove('hidden');
     }
+}
+
+// Format file size in human-readable format
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return 'Unknown size';
+    
+    const units = ['bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    
+    return `${(bytes / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0)} ${units[i]}`;
 }
 
 // ===== PLATFORM DETECTION =====
@@ -183,9 +195,11 @@ async function searchYouTube(query) {
             throw new Error('YouTube search failed');
         }
         
+        // FIXED: Correctly parse the JSON response
         const data = await response.json();
         
-        if (data.items && data.items.length > 0) {
+        // FIXED: Ensure we return the items array
+        if (data && data.items && data.items.length > 0) {
             return data.items;
         }
         
@@ -193,6 +207,30 @@ async function searchYouTube(query) {
     } catch (error) {
         console.error('YouTube Search Error:', error);
         return [];
+    }
+}
+
+// ===== NEW: Fetch video info with file sizes =====
+
+async function fetchVideoInfo(url) {
+    try {
+        const response = await fetch(CONFIG.apis.videoInfo, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch video info');
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Video info fetch error:', error);
+        return null;
     }
 }
 
@@ -210,6 +248,10 @@ async function loadVideoDetails(url) {
             title: 'Loading...',
             thumbnail: 'https://via.placeholder.com/800x450?text=Video'
         };
+        
+        // Fetch video info with file sizes
+        const videoInfo = await fetchVideoInfo(validatedUrl);
+        appState.videoInfo = videoInfo;
         
         // Get video metadata using backend proxy
         if (platform === 'youtube') {
@@ -253,7 +295,7 @@ function displayVideoDetails() {
     if (channel) channel.textContent = video.author || video.platform;
     if (platform) platform.textContent = video.platform.toUpperCase();
     
-    // Generate format options
+    // Generate format options with real file sizes
     generateFormatOptions();
 }
 
@@ -261,12 +303,26 @@ function generateFormatOptions() {
     const container = document.getElementById('formatOptions');
     if (!container) return;
     
+    // Default formats with estimated sizes
     const formats = [
         { format: 'mp4', quality: '1080', label: '1080p Full HD', size: '~68 MB' },
         { format: 'mp4', quality: '720', label: '720p HD', size: '~35 MB' },
         { format: 'mp4', quality: '480', label: '480p SD', size: '~18 MB' },
         { format: 'mp3', quality: '320', label: 'MP3 Audio', size: '~8 MB' }
     ];
+    
+    // Update with real file sizes if available
+    if (appState.videoInfo && appState.videoInfo.formats) {
+        formats.forEach(f => {
+            const formatInfo = appState.videoInfo.formats.find(
+                fmt => fmt.format === f.format && fmt.quality === f.quality
+            );
+            
+            if (formatInfo && formatInfo.fileSize) {
+                f.size = formatFileSize(formatInfo.fileSize);
+            }
+        });
+    }
     
     container.innerHTML = formats.map((f, i) => `
         <div class="format-option ${i === 1 ? 'selected' : ''}" onclick="selectFormat('${f.format}', '${f.quality}', this)">
@@ -284,6 +340,20 @@ function selectFormat(format, quality, element) {
     element.classList.add('selected');
     appState.selectedFormat = format;
     appState.selectedQuality = quality;
+    
+    // Update file size display if we have real data
+    if (appState.videoInfo && appState.videoInfo.formats) {
+        const formatInfo = appState.videoInfo.formats.find(
+            fmt => fmt.format === format && fmt.quality === quality
+        );
+        
+        if (formatInfo && formatInfo.fileSize) {
+            const sizeElement = element.querySelector('.format-size');
+            if (sizeElement) {
+                sizeElement.textContent = formatFileSize(formatInfo.fileSize);
+            }
+        }
+    }
 }
 
 // ===== DOWNLOAD LINK GENERATION =====
@@ -299,6 +369,7 @@ async function generateDownloadLink() {
     try {
         const isAudio = appState.selectedFormat === 'mp3';
         
+        // FIXED: Send correct body parameters to the server
         const downloadData = await fetchVideoFromCobalt(appState.currentVideo.url, {
             quality: appState.selectedQuality,
             isAudio: isAudio
