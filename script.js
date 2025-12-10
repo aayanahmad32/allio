@@ -1,15 +1,13 @@
-// ===== ALLIO PRO - UPDATED VERSION WITH REAL FILE SIZE =====
-// Fixed video download, search functionality, and added real file size feature
+// ===== ALLIO PRO - FRONTEND SCRIPT =====
+// Handles all UI logic, API calls, and user interactions.
 
 // Configuration
 const CONFIG = {
     apis: {
-        cobalt: '/api/download', // Using backend proxy
-        youtube: '/api/youtube-metadata', // Using backend proxy
-        youtubeSearch: '/api/youtube-search', // Using backend proxy
-        videoInfo: '/api/video-info' // New endpoint for video info with file sizes
-    },
-    youtubeApiKey: 'AIzaSyC7u-2sK5O6iQj5B-0X6Y7Z8A9B0C1D2E3F' // Will be used by backend
+        download: '/api/download',
+        search: '/api/youtube-search',
+        videoInfo: '/api/video-info'
+    }
 };
 
 // State Management
@@ -151,67 +149,6 @@ function validateAndProcessUrl(url) {
 
 // ===== CORE DOWNLOAD FUNCTIONALITY =====
 
-async function fetchVideoFromCobalt(url, options = {}) {
-    try {
-        // Use backend proxy instead of direct API call
-        const response = await fetch(CONFIG.apis.cobalt, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                url: url,
-                quality: options.quality || '720',
-                isAudio: options.isAudio || false
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'API request failed');
-        }
-        
-        const data = await response.json();
-        
-        if (data.status === 'error' || data.status === 'rate-limit') {
-            throw new Error(data.text || 'Download failed');
-        }
-        
-        return data;
-    } catch (error) {
-        console.error('Cobalt API Error:', error);
-        throw error;
-    }
-}
-
-// ===== YOUTUBE SEARCH FUNCTIONALITY =====
-
-async function searchYouTube(query) {
-    try {
-        // Use backend proxy instead of direct API call
-        const response = await fetch(`${CONFIG.apis.youtubeSearch}?q=${encodeURIComponent(query)}&maxResults=10`);
-        
-        if (!response.ok) {
-            throw new Error('YouTube search failed');
-        }
-        
-        // FIXED: Correctly parse the JSON response
-        const data = await response.json();
-        
-        // FIXED: Ensure we return the items array
-        if (data && data.items && data.items.length > 0) {
-            return data.items;
-        }
-        
-        return [];
-    } catch (error) {
-        console.error('YouTube Search Error:', error);
-        return [];
-    }
-}
-
-// ===== NEW: Fetch video info with file sizes =====
-
 async function fetchVideoInfo(url) {
     try {
         const response = await fetch(CONFIG.apis.videoInfo, {
@@ -234,6 +171,30 @@ async function fetchVideoInfo(url) {
     }
 }
 
+// ===== YOUTUBE SEARCH FUNCTIONALITY =====
+
+async function searchYouTube(query) {
+    try {
+        const response = await fetch(`${CONFIG.apis.search}?q=${encodeURIComponent(query)}`);
+        
+        if (!response.ok) {
+            throw new Error('YouTube search failed');
+        }
+        
+        const data = await response.json();
+        
+        // The backend using ytsr will return a structure like { items: [...] }
+        if (data && data.items && data.items.length > 0) {
+            return data.items;
+        }
+        
+        return [];
+    } catch (error) {
+        console.error('YouTube Search Error:', error);
+        return [];
+    }
+}
+
 // ===== VIDEO DETAILS =====
 
 async function loadVideoDetails(url) {
@@ -246,29 +207,19 @@ async function loadVideoDetails(url) {
             url: validatedUrl,
             platform: platform,
             title: 'Loading...',
-            thumbnail: 'https://via.placeholder.com/800x450?text=Video'
+            thumbnail: 'https://via.placeholder.com/800x450?text=Video',
+            author: 'Unknown'
         };
         
-        // Fetch video info with file sizes
+        // Fetch video info from the backend proxy
         const videoInfo = await fetchVideoInfo(validatedUrl);
         appState.videoInfo = videoInfo;
         
-        // Get video metadata using backend proxy
-        if (platform === 'youtube') {
-            const videoId = extractYouTubeId(validatedUrl);
-            if (videoId) {
-                try {
-                    const response = await fetch(`${CONFIG.apis.youtube}?url=${encodeURIComponent(validatedUrl)}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        appState.currentVideo.title = data.title || 'YouTube Video';
-                        appState.currentVideo.thumbnail = data.thumbnail_url || appState.currentVideo.thumbnail;
-                        appState.currentVideo.author = data.author_name || 'Unknown';
-                    }
-                } catch (e) {
-                    console.warn('Could not fetch metadata:', e);
-                }
-            }
+        if (videoInfo) {
+            // Update video state with info from the API
+            appState.currentVideo.title = videoInfo.title || videoInfo.filename || 'Video';
+            appState.currentVideo.thumbnail = videoInfo.thumbnail || appState.currentVideo.thumbnail;
+            appState.currentVideo.author = videoInfo.uploader || videoInfo.channel || 'Unknown';
         }
         
         displayVideoDetails();
@@ -277,6 +228,7 @@ async function loadVideoDetails(url) {
         
     } catch (error) {
         showNotification('Error', error.message, 'error');
+        showSection(elements.searchSection); // Go back to search on error
     } finally {
         showSpinner(false);
     }
@@ -288,12 +240,10 @@ function displayVideoDetails() {
     const thumbnail = document.getElementById('videoThumbnail');
     const title = document.getElementById('videoTitle');
     const channel = document.getElementById('videoChannel');
-    const platform = document.getElementById('videoPlatform');
     
     if (thumbnail) thumbnail.src = video.thumbnail;
     if (title) title.textContent = video.title;
-    if (channel) channel.textContent = video.author || video.platform;
-    if (platform) platform.textContent = video.platform.toUpperCase();
+    if (channel) channel.textContent = video.author;
     
     // Generate format options with real file sizes
     generateFormatOptions();
@@ -340,20 +290,6 @@ function selectFormat(format, quality, element) {
     element.classList.add('selected');
     appState.selectedFormat = format;
     appState.selectedQuality = quality;
-    
-    // Update file size display if we have real data
-    if (appState.videoInfo && appState.videoInfo.formats) {
-        const formatInfo = appState.videoInfo.formats.find(
-            fmt => fmt.format === format && fmt.quality === quality
-        );
-        
-        if (formatInfo && formatInfo.fileSize) {
-            const sizeElement = element.querySelector('.format-size');
-            if (sizeElement) {
-                sizeElement.textContent = formatFileSize(formatInfo.fileSize);
-            }
-        }
-    }
 }
 
 // ===== DOWNLOAD LINK GENERATION =====
@@ -369,14 +305,20 @@ async function generateDownloadLink() {
     try {
         const isAudio = appState.selectedFormat === 'mp3';
         
-        // FIXED: Send correct body parameters to the server
-        const downloadData = await fetchVideoFromCobalt(appState.currentVideo.url, {
-            quality: appState.selectedQuality,
-            isAudio: isAudio
-        });
-        
+        const downloadData = await fetch(CONFIG.apis.download, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                url: appState.currentVideo.url,
+                quality: appState.selectedQuality,
+                isAudio: isAudio
+            })
+        }).then(res => res.json());
+
         if (!downloadData.url) {
-            throw new Error('No download link received');
+            throw new Error('No download link received from the server.');
         }
         
         // Save to history
@@ -475,13 +417,14 @@ function displaySearchResults(results) {
                 <div class="platform-badge">
                     <i class="fab fa-youtube"></i>
                 </div>
+                ${item.duration ? `<div class="duration-badge">${item.duration}</div>` : ''}
             </div>
             <div class="result-info">
                 <div class="result-title">${item.title}</div>
                 <div class="result-meta">
                     <div class="channel-name">
                         <i class="fas fa-user"></i>
-                        <span>${item.channel}</span>
+                        <span>${item.channel || item.author}</span>
                     </div>
                 </div>
             </div>
@@ -501,15 +444,20 @@ async function quickDownload(videoId) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     
     try {
-        const downloadData = await fetchVideoFromCobalt(url, {
-            quality: '720',
-            isAudio: false
-        });
-        
-        if (downloadData.url) {
-            // Open download link in new tab
+        // Directly call the download API for quick download
+        const downloadData = await fetch(CONFIG.apis.download, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url, quality: '720', isAudio: false })
+        }).then(res => res.json());
+
+        if (downloadData && downloadData.url) {
             window.open(downloadData.url, '_blank');
             showNotification('Success', 'Download started!');
+        } else {
+            throw new Error('Could not generate download link.');
         }
     } catch (error) {
         showNotification('Error', error.message, 'error');
@@ -597,6 +545,7 @@ async function pasteFromClipboard() {
         if (elements.input) {
             elements.input.value = text;
             showNotification('Success', 'URL pasted!');
+            // Automatically process after pasting
             await processInput();
         }
     } catch (err) {
@@ -698,7 +647,7 @@ function showPage(page) {
                     <p>ALLIO PRO is a premium global media downloader developed by LoopLabs Tech. We provide high-quality video and audio downloads from all major social media platforms.</p>
                     
                     <h3>Our Mission</h3>
-                    <p>Our mission is to provide the best possible media downloading experience with cutting-edge technology and user-friendly interface.</p>
+                    <p>Our mission is to provide the best possible media downloading experience with cutting-edge technology and a user-friendly interface.</p>
                     
                     <h3>Why Choose ALLIO PRO?</h3>
                     <ul>
@@ -788,6 +737,7 @@ function shareApp() {
             url: window.location.origin
         });
     } else {
+        // Fallback for browsers that do not support the Web Share API
         showPage('share');
         const modal = document.getElementById('pageModal');
         const title = document.getElementById('pageModalTitle');
@@ -931,8 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===== GLOBAL FUNCTIONS =====
-
-// Make functions globally available
+// Make functions globally available for onclick handlers
 window.processInput = processInput;
 window.pasteFromClipboard = pasteFromClipboard;
 window.generateDownloadLink = generateDownloadLink;
@@ -961,16 +910,3 @@ window.searchSuggestion = searchSuggestion;
 window.closeSearchResults = closeSearchResults;
 window.loadVideoFromSearch = loadVideoFromSearch;
 window.quickDownload = quickDownload;
-
-// Service Worker Registration
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('ServiceWorker registration successful');
-            })
-            .catch(err => {
-                console.log('ServiceWorker registration failed: ', err);
-            });
-    });
-}

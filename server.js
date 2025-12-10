@@ -1,10 +1,11 @@
-// ===== ALLIO PRO SERVER - UPDATED VERSION WITH REAL FILE SIZE =====
-// Fixed video download, search functionality, and added real file size feature
+// ===== ALLIO PRO - BACKEND SERVER =====
+// Handles API requests for searching YouTube and proxying download requests to Cobalt.
 
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
+const ytsr = require('ytsr');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
@@ -13,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-// FIXED: Changed to serve files from the root directory instead of 'public'
+// CRITICAL: Serve static files from the root directory for a flat structure
 app.use(express.static(__dirname));
 
 // Rate limiting to prevent abuse
@@ -84,15 +85,15 @@ app.post('/api/video-info', async (req, res) => {
         const response = await fetch('https://api.cobalt.tools/api/json', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                // Spoof headers to look like a real browser
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
-                'User-Agent': 'ALLIO-PRO/1.0'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 url: url,
                 vCodec: 'h264',
-                vQuality: '720',
-                filenamePattern: 'basic'
+                vQuality: '720' // Default quality for info
             })
         });
         
@@ -160,9 +161,10 @@ app.post('/api/download', async (req, res) => {
         const response = await fetch('https://api.cobalt.tools/api/json', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                // Spoof headers to look like a real browser
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
-                'User-Agent': 'ALLIO-PRO/1.0'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 url: url,
@@ -215,7 +217,7 @@ app.post('/api/download', async (req, res) => {
     }
 });
 
-// FIXED: YouTube Search API with proper response structure
+// FIXED: YouTube Search API using ytsr
 app.get('/api/youtube-search', async (req, res) => {
     try {
         const { q, maxResults = 10 } = req.query;
@@ -231,24 +233,18 @@ app.get('/api/youtube-search', async (req, res) => {
             return res.json(cached);
         }
         
-        // Use YouTube Data API v3
-        const apiKey = process.env.YOUTUBE_API_KEY || 'AIzaSyC7u-2sK5O6iQj5B-0X6Y7Z8A9B0C1D2E3F';
-        const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&maxResults=${maxResults}&key=${apiKey}`
-        );
+        // Use ytsr library to fetch search results
+        const searchFilters = await ytsr.getFilters(q);
+        const filter = searchFilters.get('Type').get('Video');
+        const searchResults = await ytsr(filter.url, { limit: maxResults });
         
-        if (!response.ok) {
-            throw new Error(`YouTube search failed: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // FIXED: Structure the response with the required format
-        const results = data.items.map(item => ({
-            id: item.id.videoId,
-            title: item.snippet.title,
-            channel: item.snippet.channelTitle,
-            thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+        // Map the results to the format expected by the frontend
+        const results = searchResults.items.map(item => ({
+            id: item.id,
+            title: item.title,
+            channel: item.author?.name || 'Unknown Channel',
+            thumbnail: item.bestThumbnail?.url || 'https://via.placeholder.com/320x180',
+            duration: item.duration || '',
             platform: 'youtube'
         }));
         
@@ -266,7 +262,7 @@ app.get('/api/youtube-search', async (req, res) => {
     }
 });
 
-// Get video metadata from YouTube
+// Get video metadata from YouTube (using oEmbed as a fallback)
 app.get('/api/youtube-metadata', async (req, res) => {
     try {
         const { url } = req.query;
