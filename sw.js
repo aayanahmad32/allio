@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allio-pro-v2';
+const CACHE_NAME = 'allio-pro-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const ASSETS_TO_CACHE = [
   '/script.js'
 ];
 
+// Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -13,6 +14,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {
@@ -25,8 +27,9 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Fetch Event
 self.addEventListener('fetch', (event) => {
-  // API calls network par jayenge directly
+  // API requests should go to network directly
   if (event.request.url.includes('/api/')) {
     return;
   }

@@ -1,6 +1,3 @@
-// ===== ALLIO PRO - BACKEND SERVER =====
-// Handles API requests for searching YouTube and proxying download requests to Cobalt.
-
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -86,7 +83,7 @@ app.post('/api/video-info', async (req, res) => {
             method: 'POST',
             headers: {
                 // Spoof headers to look like a real browser
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             },
@@ -161,10 +158,18 @@ app.post('/api/download', async (req, res) => {
         const response = await fetch('https://api.cobalt.tools/api/json', {
             method: 'POST',
             headers: {
-                // Spoof headers to look like a real browser
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+                // FIXED: Strictly mimic browser headers
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Origin': 'https://cobalt.tools',
+                'Referer': 'https://cobalt.tools/',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-site'
             },
             body: JSON.stringify({
                 url: url,
@@ -217,7 +222,7 @@ app.post('/api/download', async (req, res) => {
     }
 });
 
-// FIXED: YouTube Search API using ytsr
+// FIXED: YouTube Search API using ytsr with Piped API fallback
 app.get('/api/youtube-search', async (req, res) => {
     try {
         const { q, maxResults = 10 } = req.query;
@@ -233,31 +238,70 @@ app.get('/api/youtube-search', async (req, res) => {
             return res.json(cached);
         }
         
-        // Use ytsr library to fetch search results
-        const searchFilters = await ytsr.getFilters(q);
-        const filter = searchFilters.get('Type').get('Video');
-        const searchResults = await ytsr(filter.url, { limit: maxResults });
+        let results = [];
         
-        // Map the results to the format expected by the frontend
-        const results = searchResults.items.map(item => ({
-            id: item.id,
-            title: item.title,
-            channel: item.author?.name || 'Unknown Channel',
-            thumbnail: item.bestThumbnail?.url || 'https://via.placeholder.com/320x180',
-            duration: item.duration || '',
-            platform: 'youtube'
-        }));
+        try {
+            // Step 1: Try using ytsr
+            const searchFilters = await ytsr.getFilters(q);
+            const filter = searchFilters.get('Type').get('Video');
+            const searchResults = await ytsr(filter.url, { limit: maxResults });
+            
+            // Map the results to the format expected by the frontend
+            results = searchResults.items.map(item => ({
+                id: item.id,
+                title: item.title,
+                channel: item.author?.name || 'Unknown Channel',
+                thumbnail: item.bestThumbnail?.url || 'https://via.placeholder.com/320x180',
+                duration: item.duration || '',
+                platform: 'youtube'
+            }));
+            
+            // If we got results, cache and return them
+            if (results.length > 0) {
+                setCache(cacheKey, { items: results });
+                return res.json({ items: results });
+            }
+        } catch (ytsrError) {
+            console.error('ytsr search failed:', ytsrError);
+        }
         
-        // Cache result
-        setCache(cacheKey, { items: results });
-        
-        res.json({ items: results });
+        // Step 2: Fallback to Piped API if ytsr fails or returns empty results
+        try {
+            const pipedResponse = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}&filter=videos`);
+            
+            if (!pipedResponse.ok) {
+                throw new Error(`Piped API request failed: ${pipedResponse.status}`);
+            }
+            
+            const pipedData = await pipedResponse.json();
+            
+            // Map Piped API response to match ytsr structure
+            results = pipedData.items.map(item => ({
+                id: item.url.split('v=')[1] || item.url.split('/').pop(),
+                title: item.title,
+                channel: item.uploaderName || 'Unknown Channel',
+                thumbnail: item.thumbnail || 'https://via.placeholder.com/320x180',
+                duration: item.duration || '',
+                platform: 'youtube'
+            }));
+            
+            // Cache the results
+            setCache(cacheKey, { items: results });
+            
+            return res.json({ items: results });
+            
+        } catch (pipedError) {
+            console.error('Piped API fallback failed:', pipedError);
+            // Return empty results if both methods fail
+            return res.json({ items: [] });
+        }
         
     } catch (error) {
         console.error('YouTube search error:', error);
         res.status(500).json({ 
             error: 'YouTube search failed',
-            message: error.message 
+            message: error.message,
+            items: [] // Return empty items array
         });
     }
 });

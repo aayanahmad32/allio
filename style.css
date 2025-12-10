@@ -1188,6 +1188,22 @@ main {
     overflow: hidden;
 }
 
+/* Ad Box Styles */
+.feature-card.ad-box {
+    grid-column: 1 / -1; /* Make ad span full width */
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+}
+
+.feature-card.ad-box .ad-content {
+    width: 100%;
+    max-width: 728px;
+    margin: 0 auto;
+}
+
 .feature-card::before {
     content: '';
     position: absolute;
@@ -2218,6 +2234,11 @@ footer {
     .btn-icon {
         font-size: 2.2rem;
     }
+    
+    /* Ad boxes responsive */
+    .feature-card.ad-box {
+        grid-column: span 2;
+    }
 }
 
 @media(max-width: 768px) {
@@ -2351,6 +2372,12 @@ footer {
     
     .btn-subtext {
         font-size: 0.9rem;
+    }
+    
+    /* Ad boxes mobile responsive */
+    .feature-card.ad-box {
+        grid-column: 1 / -1;
+        min-height: 100px;
     }
 }
 

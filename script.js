@@ -280,20 +280,35 @@ function generateFormatOptions() {
                 <span class="format-name">${f.label}</span>
                 <span class="format-size">${f.size}</span>
             </div>
-            <input type="radio" name="format" ${i === 1 ? 'checked' : ''}>
+            <input type="radio" name="format" value="${f.format}-${f.quality}" ${i === 1 ? 'checked' : ''}>
         </div>
     `).join('');
 }
 
+// FIXED: Rewrite selectFormat function to properly update state and radio buttons
 function selectFormat(format, quality, element) {
+    // Remove selected class from all options
     document.querySelectorAll('.format-option').forEach(el => el.classList.remove('selected'));
+    
+    // Add selected class to clicked element
     element.classList.add('selected');
+    
+    // Update app state
     appState.selectedFormat = format;
     appState.selectedQuality = quality;
+    
+    // Check the radio button
+    const radio = element.querySelector('input[type="radio"]');
+    if (radio) {
+        radio.checked = true;
+    }
+    
+    console.log('Selected format:', format, 'quality:', quality);
 }
 
 // ===== DOWNLOAD LINK GENERATION =====
 
+// FIXED: Rewrite generateDownloadLink with proper error handling
 async function generateDownloadLink() {
     const btn = elements.downloadBtn;
     if (!btn || !appState.currentVideo) return;
@@ -305,7 +320,7 @@ async function generateDownloadLink() {
     try {
         const isAudio = appState.selectedFormat === 'mp3';
         
-        const downloadData = await fetch(CONFIG.apis.download, {
+        const response = await fetch(CONFIG.apis.download, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -315,7 +330,17 @@ async function generateDownloadLink() {
                 quality: appState.selectedQuality,
                 isAudio: isAudio
             })
-        }).then(res => res.json());
+        });
+        
+        // FIXED: Check if response is OK before parsing JSON
+        if (!response.ok) {
+            // Read response as text to debug what server returned
+            const errorText = await response.text();
+            console.error('Server returned error:', errorText);
+            throw new Error(`Server error: ${response.status}. ${errorText}`);
+        }
+        
+        const downloadData = await response.json();
 
         if (!downloadData.url) {
             throw new Error('No download link received from the server.');
@@ -340,6 +365,7 @@ async function generateDownloadLink() {
         showNotification('Success', 'Download link generated!');
         
     } catch (error) {
+        console.error('Download error:', error);
         showNotification('Error', error.message, 'error');
     } finally {
         btn.classList.remove('loading');
@@ -445,13 +471,22 @@ async function quickDownload(videoId) {
     
     try {
         // Directly call the download API for quick download
-        const downloadData = await fetch(CONFIG.apis.download, {
+        const response = await fetch(CONFIG.apis.download, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ url, quality: '720', isAudio: false })
-        }).then(res => res.json());
+        });
+        
+        // Check if response is OK before parsing JSON
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server returned error:', errorText);
+            throw new Error(`Server error: ${response.status}. ${errorText}`);
+        }
+        
+        const downloadData = await response.json();
 
         if (downloadData && downloadData.url) {
             window.open(downloadData.url, '_blank');
