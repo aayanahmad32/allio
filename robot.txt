@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
 Sitemap: https://allio-delta.vercel.app/sitemap.xml

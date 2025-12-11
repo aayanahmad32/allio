@@ -1,5 +1,5 @@
 const CACHE_NAME = 'allio-pro-v1';
-const ASSETS = [
+const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/style.css',
@@ -7,56 +7,39 @@ const ASSETS = [
   '/manifest.json'
 ];
 
-// Install Event
+// Install Service Worker
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+    caches.open(CACHE_NAME)
+    .then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate Event (Cleanup old caches)
+// Activate Service Worker
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
         })
       );
     })
   );
-  self.clients.claim();
 });
 
-// Fetch Event
+// Fetch Strategy: Network First, fall back to Cache
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) return;
   
-  // DO NOT cache API calls (Let them go to the network / server.js)
-  if (url.pathname.startsWith('/api/')) {
-    return;
-  }
-  
-  // For static files: Stale-While-Revalidate strategy
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Update cache with new version if successful
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // Network failed (offline)
-      });
-      
-      return cachedResponse || fetchPromise;
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
     })
   );
 });
