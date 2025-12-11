@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // CRITICAL FIX: Serve static files from the root directory for a flat structure on Vercel
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, '')));
 
 // Rate limiting to prevent abuse
 const limiter = rateLimit({

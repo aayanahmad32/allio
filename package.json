@@ -1,12 +1,12 @@
 {
   "name": "allio-pro",
-  "version": "1.0.39",
+  "version": "1.0.40",
   "description": "Premium Media Downloader",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "echo 'No build step required for this flat structure'"
+    "build": "echo 'No build step required for this project'"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -14,15 +14,11 @@
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "node-fetch": "^2.6.7",
+    "node-fetch": "2.6.7",
     "express-rate-limit": "^6.7.0"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
   "keywords": [
-    "video-downloader",
-    "youtube",
+    "downloader",
     "express",
     "vercel"
   ],

@@ -929,7 +929,7 @@ function searchSuggestion(query) {
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('ALLIO PRO v1.0.39 - Application loaded');
+    console.log('ALLIO PRO v1.0.40 - Application loaded');
     
     // Load saved preferences
     const savedTheme = localStorage.getItem('theme');

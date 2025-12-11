@@ -1,5 +1,5 @@
-const CACHE_NAME = 'allio-pro-v1.0.39';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'allio-pro-v1.0.40';
+const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
@@ -7,61 +7,38 @@ const ASSETS_TO_CACHE = [
   '/manifest.json'
 ];
 
-// Install Event
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching static assets');
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
+self.addEventListener('install', (e) => {
   self.skipWaiting();
+  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
-// Activate Event (Cleanup old caches)
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('[Service Worker] Clearing old cache');
-            return caches.delete(cache);
-          }
-        })
-      );
-    })
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) => Promise.all(
+      keys.map((key) => {
+        if (key !== CACHE_NAME) return caches.delete(key);
+      })
+    ))
   );
   self.clients.claim();
 });
 
-// Fetch Event
-self.addEventListener('fetch', (event) => {
-  // Network-first strategy for API calls
-  if (event.request.url.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          // Optional: Return a JSON error if offline
-          return new Response(
-            JSON.stringify({ error: 'Network unavailable' }),
-            { headers: { 'Content-Type': 'application/json' } }
-          );
-        })
+self.addEventListener('fetch', (e) => {
+  // API calls: Network First
+  if (e.request.url.includes('/api/')) {
+    e.respondWith(
+      fetch(e.request).catch(() => new Response(JSON.stringify({ error: 'Offline' }), { headers: { 'Content-Type': 'application/json' } }))
     );
     return;
   }
-
-  // Stale-while-revalidate for static assets
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
-        });
-        return networkResponse;
+  // Static files: Stale-While-Revalidate
+  e.respondWith(
+    caches.match(e.request).then((cached) => {
+      const networkFetch = fetch(e.request).then((resp) => {
+        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resp.clone()));
+        return resp;
       });
-      return cachedResponse || fetchPromise;
+      return cached || networkFetch;
     })
   );
 });
