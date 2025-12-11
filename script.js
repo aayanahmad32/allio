@@ -151,6 +151,8 @@ function validateAndProcessUrl(url) {
 
 async function fetchVideoInfo(url) {
     try {
+        console.log('Fetching video info for:', url);
+        
         const response = await fetch(CONFIG.apis.videoInfo, {
             method: 'POST',
             headers: {
@@ -159,11 +161,17 @@ async function fetchVideoInfo(url) {
             body: JSON.stringify({ url })
         });
         
+        console.log('Video info response status:', response.status);
+        
         if (!response.ok) {
-            throw new Error('Failed to fetch video info');
+            const errorText = await response.text();
+            console.error('Video info error response:', errorText);
+            throw new Error(`Failed to fetch video info: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('Video info data:', data);
+        
         return data;
     } catch (error) {
         console.error('Video info fetch error:', error);
@@ -173,17 +181,22 @@ async function fetchVideoInfo(url) {
 
 // ===== YOUTUBE SEARCH FUNCTIONALITY =====
 
-// The backend will handle the actual search logic (using Invidious API)
-// The frontend just needs to call the backend endpoint and display results.
 async function searchYouTube(query) {
     try {
+        console.log('Searching YouTube for:', query);
+        
         const response = await fetch(`${CONFIG.apis.search}?q=${encodeURIComponent(query)}`);
         
+        console.log('YouTube search response status:', response.status);
+        
         if (!response.ok) {
-            throw new Error('YouTube search failed');
+            const errorText = await response.text();
+            console.error('YouTube search error response:', errorText);
+            throw new Error(`YouTube search failed: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('YouTube search data:', data);
         
         // The backend should return a structure like { items: [...] }
         if (data && data.items && data.items.length > 0) {
@@ -229,12 +242,10 @@ async function loadVideoDetails(url) {
         showNotification('Success', 'Video loaded successfully!');
         
     } catch (error) {
-        // CRITICAL FIX: Ensure spinner is hidden and user is notified on failure
-        showSpinner(false);
+        console.error('Load video details error:', error);
         showNotification('Error', error.message, 'error');
         showSection(elements.searchSection); // Go back to search on error
     } finally {
-        // Ensure spinner is hidden even if there's an unexpected success path
         showSpinner(false);
     }
 }
@@ -242,13 +253,48 @@ async function loadVideoDetails(url) {
 function displayVideoDetails() {
     const video = appState.currentVideo;
     
+    console.log('Displaying video details:', video);
+    
     const thumbnail = document.getElementById('videoThumbnail');
     const title = document.getElementById('videoTitle');
     const channel = document.getElementById('videoChannel');
+    const views = document.getElementById('videoViews');
+    const duration = document.getElementById('videoDuration');
+    const uploadDate = document.getElementById('videoUploadDate');
+    const description = document.getElementById('videoDescription');
     
-    if (thumbnail) thumbnail.src = video.thumbnail;
+    // Update thumbnail
+    if (thumbnail) {
+        thumbnail.src = video.thumbnail;
+        thumbnail.onerror = function() {
+            this.src = 'https://via.placeholder.com/800x450?text=Video';
+        };
+    }
+    
+    // Update text content
     if (title) title.textContent = video.title;
     if (channel) channel.textContent = video.author;
+    
+    // Update metadata with fallbacks
+    if (views) {
+        const viewCount = appState.videoInfo?.views || 'N/A';
+        views.textContent = typeof viewCount === 'number' ? viewCount.toLocaleString() + ' views' : viewCount;
+    }
+    
+    if (duration) {
+        const durationText = appState.videoInfo?.duration || 'N/A';
+        duration.textContent = durationText;
+    }
+    
+    if (uploadDate) {
+        const uploadText = appState.videoInfo?.uploadDate || 'N/A';
+        uploadDate.textContent = uploadText;
+    }
+    
+    if (description) {
+        const descText = appState.videoInfo?.description || 'No description available.';
+        description.textContent = descText;
+    }
     
     // Generate format options with real file sizes
     generateFormatOptions();
@@ -257,6 +303,8 @@ function displayVideoDetails() {
 function generateFormatOptions() {
     const container = document.getElementById('formatOptions');
     if (!container) return;
+    
+    console.log('Generating format options with video info:', appState.videoInfo);
     
     // Default formats with estimated sizes
     const formats = [
@@ -288,10 +336,16 @@ function generateFormatOptions() {
             <input type="radio" name="format" value="${f.format}-${f.quality}" ${i === 1 ? 'checked' : ''}>
         </div>
     `).join('');
+    
+    // Set default selection
+    appState.selectedFormat = 'mp4';
+    appState.selectedQuality = '720';
 }
 
 // FIXED: Rewrite selectFormat function to properly update state and radio buttons
 function selectFormat(format, quality, element) {
+    console.log('Selecting format:', format, 'quality:', quality);
+    
     // Remove selected class from all options
     document.querySelectorAll('.format-option').forEach(el => el.classList.remove('selected'));
     
@@ -313,7 +367,6 @@ function selectFormat(format, quality, element) {
 
 // ===== DOWNLOAD LINK GENERATION =====
 
-// FIXED: Rewrite generateDownloadLink with proper error handling
 async function generateDownloadLink() {
     const btn = elements.downloadBtn;
     if (!btn || !appState.currentVideo) return;
@@ -324,6 +377,12 @@ async function generateDownloadLink() {
     
     try {
         const isAudio = appState.selectedFormat === 'mp3';
+        
+        console.log('Generating download link with params:', {
+            url: appState.currentVideo.url,
+            quality: appState.selectedQuality,
+            isAudio: isAudio
+        });
         
         const response = await fetch(CONFIG.apis.download, {
             method: 'POST',
@@ -337,6 +396,8 @@ async function generateDownloadLink() {
             })
         });
         
+        console.log('Download response status:', response.status);
+        
         // FIXED: Check if response is OK before parsing JSON
         if (!response.ok) {
             // Read response as text to debug what server returned
@@ -346,6 +407,7 @@ async function generateDownloadLink() {
         }
         
         const downloadData = await response.json();
+        console.log('Download data:', downloadData);
 
         if (!downloadData.url) {
             throw new Error('No download link received from the server.');
@@ -429,6 +491,7 @@ async function performSearch(query) {
         }
         
     } catch (error) {
+        console.error('Perform search error:', error);
         showNotification('Error', error.message, 'error');
         if (skeleton) skeleton.classList.add('hidden');
         if (emptyState) emptyState.classList.remove('hidden');
@@ -441,10 +504,12 @@ function displaySearchResults(results) {
     const container = document.getElementById('searchResultsContainer');
     if (!container) return;
     
+    console.log('Displaying search results:', results);
+    
     container.innerHTML = results.map(item => `
         <div class="search-result-card" onclick="loadVideoFromSearch('${item.id}')">
             <div class="result-thumbnail">
-                <img src="${item.thumbnail}" alt="${item.title}">
+                <img src="${item.thumbnail}" alt="${item.title}" onerror="this.src='https://via.placeholder.com/350x200?text=Video'">
                 <div class="platform-badge">
                     <i class="fab fa-youtube"></i>
                 </div>
@@ -492,6 +557,7 @@ async function quickDownload(videoId) {
         }
         
         const downloadData = await response.json();
+        console.log('Quick download data:', downloadData);
 
         if (downloadData && downloadData.url) {
             window.open(downloadData.url, '_blank');
@@ -500,6 +566,7 @@ async function quickDownload(videoId) {
             throw new Error('Could not generate download link.');
         }
     } catch (error) {
+        console.error('Quick download error:', error);
         showNotification('Error', error.message, 'error');
     }
 }
@@ -589,6 +656,7 @@ async function pasteFromClipboard() {
             await processInput();
         }
     } catch (err) {
+        console.error('Clipboard error:', err);
         showNotification('Error', 'Could not access clipboard', 'error');
     }
 }
@@ -861,6 +929,8 @@ function searchSuggestion(query) {
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('ALLIO PRO v1.0.39 - Application loaded');
+    
     // Load saved preferences
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {

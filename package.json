@@ -1,18 +1,31 @@
 {
   "name": "allio-pro",
-  "version": "2.0.0",
+  "version": "1.0.39",
   "description": "Premium Media Downloader",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "express-rate-limit": "^6.7.0",
-    "node-fetch": "^2.6.9"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'No build step required for this flat structure'"
   },
   "engines": {
-    "node": ">=14.x"
-  }
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.6.7",
+    "express-rate-limit": "^6.7.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "video-downloader",
+    "youtube",
+    "express",
+    "vercel"
+  ],
+  "author": "LoopLabs Tech",
+  "license": "MIT"
 }

@@ -1,5 +1,12 @@
-node_modules
-.DS_Store
+node_modules/
 .env
-npm-debug.log
+.env.local
+.vercel
 *.log
+npm-debug.log*
+.DS_Store
+dist/
+build/
+.cache/
+coverage/
+.vscode/

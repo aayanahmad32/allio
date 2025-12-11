@@ -71,10 +71,13 @@ app.post('/api/video-info', async (req, res) => {
             return res.status(400).json({ error: 'URL required' });
         }
         
+        console.log('Fetching video info for:', url);
+        
         // Check cache
         const cacheKey = `info_${url}`;
         const cached = getCache(cacheKey);
         if (cached) {
+            console.log('Returning cached video info');
             return res.json(cached);
         }
 
@@ -83,6 +86,7 @@ app.post('/api/video-info', async (req, res) => {
         // CRITICAL FIX: For YouTube, try oEmbed FIRST for reliability
         if (detectPlatform(url) === 'youtube') {
             try {
+                console.log('Trying YouTube oEmbed first');
                 const oembedData = await fetchYouTubeOEmbed(url);
                 if (oembedData) {
                     data = {
@@ -97,6 +101,7 @@ app.post('/api/video-info', async (req, res) => {
                             { format: 'mp3', quality: '320', fileSize: null }
                         ]
                     };
+                    console.log('YouTube oEmbed success:', data);
                 }
             } catch (oembedError) {
                 console.warn('YouTube oEmbed failed, falling back to Cobalt:', oembedError.message);
@@ -105,6 +110,7 @@ app.post('/api/video-info', async (req, res) => {
 
         // If oEmbed failed or it's not a YouTube URL, use Cobalt as a fallback
         if (!data) {
+            console.log('Using Cobalt API as fallback');
             const cobaltResponse = await fetch('https://api.cobalt.tools/api/json', {
                 method: 'POST',
                 headers: {
@@ -124,6 +130,7 @@ app.post('/api/video-info', async (req, res) => {
             }
             
             data = await cobaltResponse.json();
+            console.log('Cobalt API response:', data);
         }
         
         // Cache result
@@ -149,10 +156,13 @@ app.post('/api/download', async (req, res) => {
             return res.status(400).json({ error: 'URL required' });
         }
         
+        console.log('Download request:', { url, quality, isAudio });
+        
         // Check cache
         const cacheKey = `dl_${url}_${quality}_${isAudio}`;
         const cached = getCache(cacheKey);
         if (cached) {
+            console.log('Returning cached download link');
             return res.json(cached);
         }
         
@@ -176,11 +186,16 @@ app.post('/api/download', async (req, res) => {
             })
         });
         
+        console.log('Cobalt download response status:', response.status);
+        
         if (!response.ok) {
-            throw new Error(`Download request failed: ${response.status}`);
+            const errorText = await response.text();
+            console.error('Cobalt download error response:', errorText);
+            throw new Error(`Download request failed: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
+        console.log('Cobalt download data:', data);
         
         if (data.status === 'error' || data.status === 'rate-limit') {
             return res.status(400).json({ 
@@ -226,10 +241,13 @@ app.get('/api/youtube-search', async (req, res) => {
             return res.status(400).json({ error: 'Search query required' });
         }
         
+        console.log('YouTube search query:', q);
+        
         // Check cache
         const cacheKey = `search_${q}_${maxResults}`;
         const cached = getCache(cacheKey);
         if (cached) {
+            console.log('Returning cached search results');
             return res.json(cached);
         }
         
@@ -246,6 +264,7 @@ app.get('/api/youtube-search', async (req, res) => {
         // Try each instance until one succeeds
         for (const instance of invidiousInstances) {
             try {
+                console.log(`Trying Invidious instance: ${instance}`);
                 const apiResponse = await fetch(`${instance}/api/v1/search?q=${encodeURIComponent(q)}`);
                 
                 if (!apiResponse.ok) {
@@ -253,6 +272,7 @@ app.get('/api/youtube-search', async (req, res) => {
                 }
                 
                 const data = await apiResponse.json();
+                console.log(`Invidious response from ${instance}:`, data.length, 'items');
                 
                 // Map the Invidious response to the format expected by the frontend
                 results = data.map(item => ({
@@ -265,6 +285,7 @@ app.get('/api/youtube-search', async (req, res) => {
                 }));
 
                 if (results.length > 0) {
+                    console.log(`Success with ${instance}, found ${results.length} results`);
                     break; // Success, stop trying other instances
                 }
             } catch (err) {
@@ -281,6 +302,7 @@ app.get('/api/youtube-search', async (req, res) => {
             throw lastError;
         }
         
+        console.log(`Returning ${results.length} search results`);
         res.json({ items: results });
         
     } catch (error) {
@@ -472,11 +494,14 @@ function detectPlatform(url) {
 
 // CRITICAL FIX: Helper function for YouTube oEmbed
 async function fetchYouTubeOEmbed(url) {
+    console.log('Fetching YouTube oEmbed for:', url);
     const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
     if (!response.ok) {
         throw new Error(`YouTube oEmbed request failed with status: ${response.status}`);
     }
-    return await response.json();
+    const data = await response.json();
+    console.log('YouTube oEmbed response:', data);
+    return data;
 }
 
 // Start server (only if not in Vercel)
