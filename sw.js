@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allio-pro-v1.0.40';
+const CACHE_NAME = 'allio-pro-v1';
 const ASSETS = [
   '/',
   '/index.html',
@@ -7,38 +7,56 @@ const ASSETS = [
   '/manifest.json'
 ];
 
-self.addEventListener('install', (e) => {
+// Install Event
+self.addEventListener('install', (event) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
+    })
+  );
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.map((key) => {
-        if (key !== CACHE_NAME) return caches.delete(key);
-      })
-    ))
+// Activate Event (Cleanup old caches)
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) return caches.delete(key);
+        })
+      );
+    })
   );
   self.clients.claim();
 });
 
-self.addEventListener('fetch', (e) => {
-  // API calls: Network First
-  if (e.request.url.includes('/api/')) {
-    e.respondWith(
-      fetch(e.request).catch(() => new Response(JSON.stringify({ error: 'Offline' }), { headers: { 'Content-Type': 'application/json' } }))
-    );
+// Fetch Event
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // DO NOT cache API calls (Let them go to the network / server.js)
+  if (url.pathname.startsWith('/api/')) {
     return;
   }
-  // Static files: Stale-While-Revalidate
-  e.respondWith(
-    caches.match(e.request).then((cached) => {
-      const networkFetch = fetch(e.request).then((resp) => {
-        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resp.clone()));
-        return resp;
+  
+  // For static files: Stale-While-Revalidate strategy
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Update cache with new version if successful
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        // Network failed (offline)
       });
-      return cached || networkFetch;
+      
+      return cachedResponse || fetchPromise;
     })
   );
 });
