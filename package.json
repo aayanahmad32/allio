@@ -1,35 +1,18 @@
 {
-  "name": "allio-pro-media-downloader",
-  "version": "1.0.0",
-  "description": "A premium, robust media downloader with a Node.js/Express backend and a Vanilla JS frontend, designed for Vercel deployment.",
+  "name": "allio-pro",
+  "version": "2.0.0",
+  "description": "Premium Media Downloader",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "vercel-build": "echo 'No build step required.'"
+    "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "node-fetch": "^2.7.0",
-    "ytsr": "^3.8.4",
-    "express-rate-limit": "^7.1.5"
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "node-fetch": "^2.6.9"
   },
   "engines": {
     "node": ">=14.x"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-username/allio-pro"
-  },
-  "author": "LoopLabs Tech",
-  "license": "MIT",
-  "keywords": [
-    "media-downloader",
-    "youtube-downloader",
-    "vercel",
-    "express",
-    "nodejs",
-    "video",
-    "audio"
-  ]
+  }
 }

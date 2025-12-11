@@ -173,6 +173,8 @@ async function fetchVideoInfo(url) {
 
 // ===== YOUTUBE SEARCH FUNCTIONALITY =====
 
+// The backend will handle the actual search logic (using Invidious API)
+// The frontend just needs to call the backend endpoint and display results.
 async function searchYouTube(query) {
     try {
         const response = await fetch(`${CONFIG.apis.search}?q=${encodeURIComponent(query)}`);
@@ -183,7 +185,7 @@ async function searchYouTube(query) {
         
         const data = await response.json();
         
-        // The backend using ytsr will return a structure like { items: [...] }
+        // The backend should return a structure like { items: [...] }
         if (data && data.items && data.items.length > 0) {
             return data.items;
         }
@@ -227,9 +229,12 @@ async function loadVideoDetails(url) {
         showNotification('Success', 'Video loaded successfully!');
         
     } catch (error) {
+        // CRITICAL FIX: Ensure spinner is hidden and user is notified on failure
+        showSpinner(false);
         showNotification('Error', error.message, 'error');
         showSection(elements.searchSection); // Go back to search on error
     } finally {
+        // Ensure spinner is hidden even if there's an unexpected success path
         showSpinner(false);
     }
 }
@@ -293,7 +298,7 @@ function selectFormat(format, quality, element) {
     // Add selected class to clicked element
     element.classList.add('selected');
     
-    // Update app state
+    // CRITICAL FIX: Update appState correctly
     appState.selectedFormat = format;
     appState.selectedQuality = quality;
     

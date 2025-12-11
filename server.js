@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
-const ytsr = require('ytsr');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
@@ -11,7 +10,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-// CRITICAL: Serve static files from the root directory for a flat structure
+
+// CRITICAL FIX: Serve static files from the root directory for a flat structure on Vercel
 app.use(express.static(__dirname));
 
 // Rate limiting to prevent abuse
@@ -77,51 +77,53 @@ app.post('/api/video-info', async (req, res) => {
         if (cached) {
             return res.json(cached);
         }
-        
-        // Fetch from Cobalt API with more parameters to get file size info
-        const response = await fetch('https://api.cobalt.tools/api/json', {
-            method: 'POST',
-            headers: {
-                // Spoof headers to look like a real browser
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                url: url,
-                vCodec: 'h264',
-                vQuality: '720' // Default quality for info
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API request failed: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Extract and add file size information
-        if (data && data.url) {
-            // Try to get file size from headers
+
+        let data = null;
+
+        // CRITICAL FIX: For YouTube, try oEmbed FIRST for reliability
+        if (detectPlatform(url) === 'youtube') {
             try {
-                const headResponse = await fetch(data.url, { method: 'HEAD' });
-                if (headResponse.ok) {
-                    const contentLength = headResponse.headers.get('content-length');
-                    if (contentLength) {
-                        data.fileSize = parseInt(contentLength);
-                    }
+                const oembedData = await fetchYouTubeOEmbed(url);
+                if (oembedData) {
+                    data = {
+                        title: oembedData.title,
+                        uploader: oembedData.author_name,
+                        thumbnail: oembedData.thumbnail_url,
+                        // Add dummy file size info for format options
+                        formats: [
+                            { format: 'mp4', quality: '1080', fileSize: null },
+                            { format: 'mp4', quality: '720', fileSize: null },
+                            { format: 'mp4', quality: '480', fileSize: null },
+                            { format: 'mp3', quality: '320', fileSize: null }
+                        ]
+                    };
                 }
-            } catch (e) {
-                console.warn('Could not fetch file size:', e);
+            } catch (oembedError) {
+                console.warn('YouTube oEmbed failed, falling back to Cobalt:', oembedError.message);
+            }
+        }
+
+        // If oEmbed failed or it's not a YouTube URL, use Cobalt as a fallback
+        if (!data) {
+            const cobaltResponse = await fetch('https://api.cobalt.tools/api/json', {
+                method: 'POST',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    url: url,
+                    vCodec: 'h264',
+                    vQuality: '720' // Default quality for info
+                })
+            });
+            
+            if (!cobaltResponse.ok) {
+                throw new Error(`Cobalt API request failed: ${cobaltResponse.status}`);
             }
             
-            // Create format options with estimated sizes
-            data.formats = [
-                { format: 'mp4', quality: '1080', fileSize: data.fileSize ? data.fileSize * 1.8 : null },
-                { format: 'mp4', quality: '720', fileSize: data.fileSize || null },
-                { format: 'mp4', quality: '480', fileSize: data.fileSize ? data.fileSize * 0.5 : null },
-                { format: 'mp3', quality: '320', fileSize: data.fileSize ? data.fileSize * 0.2 : null }
-            ];
+            data = await cobaltResponse.json();
         }
         
         // Cache result
@@ -154,22 +156,15 @@ app.post('/api/download', async (req, res) => {
             return res.json(cached);
         }
         
-        // FIXED: Added proper headers and JSON payload handling
+        // CRITICAL FIX: Added proper headers to mimic a real browser
         const response = await fetch('https://api.cobalt.tools/api/json', {
             method: 'POST',
             headers: {
-                // FIXED: Strictly mimic browser headers
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
                 'Origin': 'https://cobalt.tools',
-                'Referer': 'https://cobalt.tools/',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-site'
+                'Referer': 'https://cobalt.tools/'
             },
             body: JSON.stringify({
                 url: url,
@@ -222,7 +217,7 @@ app.post('/api/download', async (req, res) => {
     }
 });
 
-// FIXED: YouTube Search API using ytsr with Piped API fallback
+// FIXED: YouTube Search API using a public Invidious instance
 app.get('/api/youtube-search', async (req, res) => {
     try {
         const { q, maxResults = 10 } = req.query;
@@ -238,70 +233,62 @@ app.get('/api/youtube-search', async (req, res) => {
             return res.json(cached);
         }
         
+        // List of Invidious instances to try as fallbacks
+        const invidiousInstances = [
+            'https://inv.tux.pizza',
+            'https://vid.puffyan.us',
+            'https://yewtu.be'
+        ];
+        
         let results = [];
-        
-        try {
-            // Step 1: Try using ytsr
-            const searchFilters = await ytsr.getFilters(q);
-            const filter = searchFilters.get('Type').get('Video');
-            const searchResults = await ytsr(filter.url, { limit: maxResults });
-            
-            // Map the results to the format expected by the frontend
-            results = searchResults.items.map(item => ({
-                id: item.id,
-                title: item.title,
-                channel: item.author?.name || 'Unknown Channel',
-                thumbnail: item.bestThumbnail?.url || 'https://via.placeholder.com/320x180',
-                duration: item.duration || '',
-                platform: 'youtube'
-            }));
-            
-            // If we got results, cache and return them
-            if (results.length > 0) {
-                setCache(cacheKey, { items: results });
-                return res.json({ items: results });
+        let lastError = null;
+
+        // Try each instance until one succeeds
+        for (const instance of invidiousInstances) {
+            try {
+                const apiResponse = await fetch(`${instance}/api/v1/search?q=${encodeURIComponent(q)}`);
+                
+                if (!apiResponse.ok) {
+                    throw new Error(`Invidious instance returned status: ${apiResponse.status}`);
+                }
+                
+                const data = await apiResponse.json();
+                
+                // Map the Invidious response to the format expected by the frontend
+                results = data.map(item => ({
+                    id: item.videoId,
+                    title: item.title,
+                    channel: item.author,
+                    thumbnail: item.videoThumbnails?.find(t => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url,
+                    duration: item.lengthSeconds ? `${Math.floor(item.lengthSeconds / 60)}:${(item.lengthSeconds % 60).toString().padStart(2, '0')}` : '',
+                    platform: 'youtube'
+                }));
+
+                if (results.length > 0) {
+                    break; // Success, stop trying other instances
+                }
+            } catch (err) {
+                console.warn(`Invidious instance ${instance} failed:`, err.message);
+                lastError = err;
             }
-        } catch (ytsrError) {
-            console.error('ytsr search failed:', ytsrError);
         }
         
-        // Step 2: Fallback to Piped API if ytsr fails or returns empty results
-        try {
-            const pipedResponse = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}&filter=videos`);
-            
-            if (!pipedResponse.ok) {
-                throw new Error(`Piped API request failed: ${pipedResponse.status}`);
-            }
-            
-            const pipedData = await pipedResponse.json();
-            
-            // Map Piped API response to match ytsr structure
-            results = pipedData.items.map(item => ({
-                id: item.url.split('v=')[1] || item.url.split('/').pop(),
-                title: item.title,
-                channel: item.uploaderName || 'Unknown Channel',
-                thumbnail: item.thumbnail || 'https://via.placeholder.com/320x180',
-                duration: item.duration || '',
-                platform: 'youtube'
-            }));
-            
-            // Cache the results
-            setCache(cacheKey, { items: results });
-            
-            return res.json({ items: results });
-            
-        } catch (pipedError) {
-            console.error('Piped API fallback failed:', pipedError);
-            // Return empty results if both methods fail
-            return res.json({ items: [] });
+        // Cache the results (even if empty)
+        setCache(cacheKey, { items: results });
+        
+        // If all instances failed, return the last error
+        if (results.length === 0 && lastError) {
+            throw lastError;
         }
+        
+        res.json({ items: results });
         
     } catch (error) {
         console.error('YouTube search error:', error);
         res.status(500).json({ 
             error: 'YouTube search failed',
             message: error.message,
-            items: [] // Return empty items array
+            items: [] // Return empty items array on failure
         });
     }
 });
@@ -481,6 +468,15 @@ function detectPlatform(url) {
         if (pattern.test(url)) return platform;
     }
     return 'unknown';
+}
+
+// CRITICAL FIX: Helper function for YouTube oEmbed
+async function fetchYouTubeOEmbed(url) {
+    const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+    if (!response.ok) {
+        throw new Error(`YouTube oEmbed request failed with status: ${response.status}`);
+    }
+    return await response.json();
 }
 
 // Start server (only if not in Vercel)
