@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const fetch = require('node-fetch');
 const rateLimit = require('express-rate-limit');
+const { JSDOM } = require('jsdom');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -255,6 +256,8 @@ app.get('/api/youtube-search', async (req, res) => {
         const invidiousInstances = [
             'https://inv.tux.pizza',
             'https://vid.puffyan.us',
+            'https://yewtu.be',
+            'https://invidious.snopyta.org',
             'https://yewtu.be'
         ];
         

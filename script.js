@@ -6,8 +6,18 @@ const CONFIG = {
     apis: {
         download: '/api/download',
         search: '/api/youtube-search',
-        videoInfo: '/api/video-info'
-    }
+        videoInfo: '/api/video-info',
+        metadata: '/api/youtube-metadata',
+        proxy: '/api/proxy'
+    },
+    // List of Invidious instances to try as fallbacks
+    invidiousInstances: [
+        'https://inv.tux.pizza',
+        'https://vid.puffyan.us',
+        'https://yewtu.be',
+        'https://invidious.snopyta.org',
+        'https://yewtu.be'
+    ]
 };
 
 // State Management
@@ -16,7 +26,8 @@ let appState = {
     selectedFormat: 'mp4',
     selectedQuality: '720',
     downloadHistory: JSON.parse(localStorage.getItem('downloadHistory') || '[]'),
-    videoInfo: null // Store video info with file sizes
+    videoInfo: null, // Store video info with file sizes
+    isProcessing: false
 };
 
 // DOM Elements
@@ -100,7 +111,13 @@ function detectPlatform(url) {
         instagram: /instagram\.com/i,
         tiktok: /tiktok\.com/i,
         facebook: /facebook\.com|fb\.watch/i,
-        twitter: /twitter\.com|x\.com/i
+        twitter: /twitter\.com|x\.com/i,
+        vimeo: /vimeo\.com/i,
+        dailymotion: /dailymotion\.com/i,
+        soundcloud: /soundcloud\.com/i,
+        twitch: /twitch\.tv/i,
+        reddit: /reddit\.com/i,
+        pinterest: /pinterest\.com/i
     };
     
     for (const [platform, pattern] of Object.entries(patterns)) {
@@ -153,6 +170,38 @@ async function fetchVideoInfo(url) {
     try {
         console.log('Fetching video info for:', url);
         
+        // Try YouTube oEmbed first (most reliable)
+        if (detectPlatform(url) === 'youtube') {
+            try {
+                const videoId = extractYouTubeId(url);
+                if (videoId) {
+                    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+                    const response = await fetch(oembedUrl);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('YouTube oEmbed success:', data);
+                        
+                        return {
+                            title: data.title,
+                            uploader: data.author_name,
+                            thumbnail: data.thumbnail_url,
+                            // Add dummy file size info for format options
+                            formats: [
+                                { format: 'mp4', quality: '1080', fileSize: null },
+                                { format: 'mp4', quality: '720', fileSize: null },
+                                { format: 'mp4', quality: '480', fileSize: null },
+                                { format: 'mp3', quality: '320', fileSize: null }
+                            ]
+                        };
+                    }
+                }
+            } catch (oembedError) {
+                console.warn('YouTube oEmbed failed, trying backend:', oembedError.message);
+            }
+        }
+        
+        // Fallback to backend API
         const response = await fetch(CONFIG.apis.videoInfo, {
             method: 'POST',
             headers: {
@@ -185,25 +234,45 @@ async function searchYouTube(query) {
     try {
         console.log('Searching YouTube for:', query);
         
-        const response = await fetch(`${CONFIG.apis.search}?q=${encodeURIComponent(query)}`);
-        
-        console.log('YouTube search response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('YouTube search error response:', errorText);
-            throw new Error(`YouTube search failed: ${response.status}`);
+        // Try each Invidious instance until one succeeds
+        for (const instance of CONFIG.invidiousInstances) {
+            try {
+                console.log(`Trying Invidious instance: ${instance}`);
+                const searchUrl = `${instance}/api/v1/search?q=${encodeURIComponent(query)}`;
+                
+                const response = await fetch(searchUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Invidious instance returned status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log(`Invidious response from ${instance}:`, data.length, 'items');
+                
+                // Map the Invidious response to the format expected by the frontend
+                const results = data.map(item => ({
+                    id: item.videoId,
+                    title: item.title,
+                    channel: item.author,
+                    thumbnail: item.videoThumbnails?.find(t => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url,
+                    duration: item.lengthSeconds ? `${Math.floor(item.lengthSeconds / 60)}:${(item.lengthSeconds % 60).toString().padStart(2, '0')}` : '',
+                    platform: 'youtube'
+                }));
+
+                if (results.length > 0) {
+                    console.log(`Success with ${instance}, found ${results.length} results`);
+                    return results;
+                }
+            } catch (err) {
+                console.warn(`Invidious instance ${instance} failed:`, err.message);
+                // Continue to next instance
+            }
         }
         
-        const data = await response.json();
-        console.log('YouTube search data:', data);
-        
-        // The backend should return a structure like { items: [...] }
-        if (data && data.items && data.items.length > 0) {
-            return data.items;
-        }
-        
+        // If all instances fail, return empty array
+        console.warn('All Invidious instances failed');
         return [];
+        
     } catch (error) {
         console.error('YouTube Search Error:', error);
         return [];
@@ -213,7 +282,10 @@ async function searchYouTube(query) {
 // ===== VIDEO DETAILS =====
 
 async function loadVideoDetails(url) {
+    if (appState.isProcessing) return;
+    
     showSpinner(true);
+    appState.isProcessing = true;
     
     try {
         const { url: validatedUrl, platform } = validateAndProcessUrl(url);
@@ -247,6 +319,7 @@ async function loadVideoDetails(url) {
         showSection(elements.searchSection); // Go back to search on error
     } finally {
         showSpinner(false);
+        appState.isProcessing = false;
     }
 }
 
@@ -368,12 +441,15 @@ function selectFormat(format, quality, element) {
 // ===== DOWNLOAD LINK GENERATION =====
 
 async function generateDownloadLink() {
+    if (appState.isProcessing) return;
+    
     const btn = elements.downloadBtn;
     if (!btn || !appState.currentVideo) return;
     
     // Show loading state
     btn.classList.add('loading');
     btn.disabled = true;
+    appState.isProcessing = true;
     
     try {
         const isAudio = appState.selectedFormat === 'mp3';
@@ -437,6 +513,7 @@ async function generateDownloadLink() {
     } finally {
         btn.classList.remove('loading');
         btn.disabled = false;
+        appState.isProcessing = false;
     }
 }
 
@@ -457,7 +534,10 @@ function displayPublicLink(item) {
 // ===== SEARCH FUNCTIONALITY =====
 
 async function performSearch(query) {
+    if (appState.isProcessing) return;
+    
     showSpinner(true);
+    appState.isProcessing = true;
     showSection(elements.resultSection);
     
     // Show loading skeleton
@@ -497,6 +577,7 @@ async function performSearch(query) {
         if (emptyState) emptyState.classList.remove('hidden');
     } finally {
         showSpinner(false);
+        appState.isProcessing = false;
     }
 }
 

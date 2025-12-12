@@ -117,7 +117,6 @@ body {
     transition: opacity var(--transition-normal);
 }
 
-/* FIX: Added class to show the spinner */
 .loading-spinner.show {
     display: flex;
     opacity: 1;

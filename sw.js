@@ -1,5 +1,5 @@
 const CACHE_NAME = 'allio-pro-v1';
-const ASSETS_TO_CACHE = [
+const ASSETS = [
   '/',
   '/index.html',
   '/style.css',
@@ -7,39 +7,36 @@ const ASSETS_TO_CACHE = [
   '/manifest.json'
 ];
 
-// Install Service Worker
+// Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-    .then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
     })
   );
 });
 
-// Activate Service Worker
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
-        })
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
       );
     })
   );
 });
 
-// Fetch Strategy: Network First, fall back to Cache
+// Fetch Event
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) return;
+  // Don't cache API calls or external resources
+  if (event.request.url.includes('/api/') || !event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
   
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      return cachedResponse || fetch(event.request);
     })
   );
 });
