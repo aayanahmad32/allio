@@ -233,87 +233,206 @@ app.post('/api/download', async (req, res) => {
     }
 });
 
-// FIXED: YouTube Search API using a public Invidious instance
-app.get('/api/youtube-search', async (req, res) => {
+// FIXED: Multiple API download endpoint with retry logic
+app.post('/api/download-multi', async (req, res) => {
     try {
-        const { q, maxResults = 10 } = req.query;
+        const { url, quality = '720', isAudio = false } = req.body;
         
-        if (!q) {
-            return res.status(400).json({ error: 'Search query required' });
+        if (!url) {
+            return res.status(400).json({ error: 'URL required' });
         }
         
-        console.log('YouTube search query:', q);
+        console.log('Multi-API download request:', { url, quality, isAudio });
         
         // Check cache
-        const cacheKey = `search_${q}_${maxResults}`;
+        const cacheKey = `dl_multi_${url}_${quality}_${isAudio}`;
         const cached = getCache(cacheKey);
         if (cached) {
-            console.log('Returning cached search results');
+            console.log('Returning cached download link');
             return res.json(cached);
         }
         
-        // List of Invidious instances to try as fallbacks
-        const invidiousInstances = [
-            'https://inv.tux.pizza',
-            'https://vid.puffyan.us',
-            'https://yewtu.be',
-            'https://invidious.snopyta.org',
-            'https://yewtu.be'
+        // Define multiple APIs to try
+        const apis = [
+            {
+                name: 'Cobalt',
+                url: 'https://api.cobalt.tools/api/json',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Origin': 'https://cobalt.tools',
+                    'Referer': 'https://cobalt.tools/'
+                }
+            },
+            {
+                name: 'AllTube',
+                url: `https://api.alltubedownload.com/api/info?url=${encodeURIComponent(url)}`,
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'application/json'
+                }
+            },
+            {
+                name: 'Y2Mate',
+                url: 'https://www.y2mate.com/mates/analyzeV2/ajax',
+                method: 'POST',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }
         ];
         
-        let results = [];
         let lastError = null;
-
-        // Try each instance until one succeeds
-        for (const instance of invidiousInstances) {
+        let result = null;
+        
+        // Try each API until one succeeds
+        for (let i = 0; i < apis.length; i++) {
+            const api = apis[i];
+            
             try {
-                console.log(`Trying Invidious instance: ${instance}`);
-                const apiResponse = await fetch(`${instance}/api/v1/search?q=${encodeURIComponent(q)}`);
+                console.log(`Trying API ${i + 1}: ${api.name}`);
                 
-                if (!apiResponse.ok) {
-                    throw new Error(`Invidious instance returned status: ${apiResponse.status}`);
+                let response;
+                
+                if (api.name === 'Cobalt') {
+                    response = await fetch(api.url, {
+                        method: 'POST',
+                        headers: api.headers,
+                        body: JSON.stringify({
+                            url: url,
+                            vCodec: 'h264',
+                            vQuality: quality,
+                            aFormat: 'mp3',
+                            isAudioOnly: isAudio,
+                            filenamePattern: 'pretty'
+                        })
+                    });
+                } else if (api.name === 'AllTube') {
+                    response = await fetch(api.url, {
+                        method: 'GET',
+                        headers: api.headers
+                    });
+                } else if (api.name === 'Y2Mate') {
+                    const formData = new URLSearchParams();
+                    formData.append('k_query', url);
+                    formData.append('k_page', 'home');
+                    
+                    response = await fetch(api.url, {
+                        method: 'POST',
+                        headers: api.headers,
+                        body: formData
+                    });
                 }
                 
-                const data = await apiResponse.json();
-                console.log(`Invidious response from ${instance}:`, data.length, 'items');
+                const text = await response.text();
                 
-                // Map the Invidious response to the format expected by the frontend
-                results = data.map(item => ({
-                    id: item.videoId,
-                    title: item.title,
-                    channel: item.author,
-                    thumbnail: item.videoThumbnails?.find(t => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url,
-                    duration: item.lengthSeconds ? `${Math.floor(item.lengthSeconds / 60)}:${(item.lengthSeconds % 60).toString().padStart(2, '0')}` : '',
-                    platform: 'youtube'
-                }));
-
-                if (results.length > 0) {
-                    console.log(`Success with ${instance}, found ${results.length} results`);
-                    break; // Success, stop trying other instances
+                // Check if response is HTML (error) or JSON (success)
+                if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+                    throw new Error(`${api.name} API blocked by Cloudflare`);
                 }
-            } catch (err) {
-                console.warn(`Invidious instance ${instance} failed:`, err.message);
-                lastError = err;
+                
+                if (!response.ok) {
+                    throw new Error(`${api.name} API error: ${response.status}`);
+                }
+                
+                const data = JSON.parse(text);
+                
+                if (api.name === 'Cobalt' && (data.status === 'error' || data.status === 'rate-limit')) {
+                    throw new Error(data.text || 'Cobalt API error');
+                }
+                
+                if (api.name === 'AllTube' && (!data.formats || data.formats.length === 0)) {
+                    throw new Error('No formats found in AllTube response');
+                }
+                
+                if (api.name === 'Y2Mate' && (!data.links || !data.links.mp4)) {
+                    throw new Error('No download links found in Y2Mate response');
+                }
+                
+                // Process successful response
+                if (api.name === 'AllTube') {
+                    // Find best format
+                    const selectedFormat = data.formats?.find(f => 
+                        f.qualityLabel && f.qualityLabel.includes(quality)
+                    ) || data.formats?.[0];
+                    
+                    if (selectedFormat) {
+                        result = {
+                            url: selectedFormat.url,
+                            title: data.title,
+                            filename: data.title,
+                            filesize: selectedFormat.filesize,
+                            api: api.name
+                        };
+                    }
+                } else if (api.name === 'Y2Mate') {
+                    // Find best quality
+                    const qualityKey = `${quality}p`;
+                    let videoLink = data.links.mp4?.[qualityKey] || 
+                                   data.links.mp4?.['360p'] || 
+                                   Object.values(data.links.mp4 || {})[0];
+                    
+                    if (videoLink) {
+                        result = {
+                            url: videoLink[0]?.k || videoLink,
+                            title: data.title,
+                            filename: data.title,
+                            api: api.name
+                        };
+                    }
+                } else {
+                    // Cobalt response
+                    result = {
+                        ...data,
+                        api: api.name
+                    };
+                }
+                
+                if (result && result.url) {
+                    console.log(`Success with ${api.name} API`);
+                    break;
+                }
+                
+            } catch (error) {
+                lastError = error;
+                console.warn(`${api.name} API failed:`, error.message);
+                continue;
             }
         }
         
-        // Cache the results (even if empty)
-        setCache(cacheKey, { items: results });
-        
-        // If all instances failed, return the last error
-        if (results.length === 0 && lastError) {
-            throw lastError;
+        if (!result) {
+            throw new Error(`All APIs failed. Last error: ${lastError?.message || 'Unknown error'}`);
         }
         
-        console.log(`Returning ${results.length} search results`);
-        res.json({ items: results });
+        // Try to get file size
+        if (result.url) {
+            try {
+                const headResponse = await fetch(result.url, { method: 'HEAD' });
+                if (headResponse.ok) {
+                    const contentLength = headResponse.headers.get('content-length');
+                    if (contentLength) {
+                        result.fileSize = parseInt(contentLength);
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not fetch file size:', e);
+            }
+        }
+        
+        // Cache result
+        setCache(cacheKey, result);
+        
+        res.json(result);
         
     } catch (error) {
-        console.error('YouTube search error:', error);
+        console.error('Multi-API download error:', error);
         res.status(500).json({ 
-            error: 'YouTube search failed',
-            message: error.message,
-            items: [] // Return empty items array on failure
+            error: 'Download failed',
+            message: error.message 
         });
     }
 });

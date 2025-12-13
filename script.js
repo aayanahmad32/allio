@@ -5,18 +5,40 @@
 const CONFIG = {
     apis: {
         download: '/api/download',
-        search: '/api/youtube-search',
         videoInfo: '/api/video-info',
         metadata: '/api/youtube-metadata',
         proxy: '/api/proxy'
     },
-    // List of Invidious instances to try as fallbacks
-    invidiousInstances: [
-        'https://inv.tux.pizza',
-        'https://vid.puffyan.us',
-        'https://yewtu.be',
-        'https://invidious.snopyta.org',
-        'https://yewtu.be'
+    // Multiple download APIs for retry logic
+    downloadAPIs: [
+        {
+            name: 'Cobalt',
+            url: 'https://api.cobalt.tools/api/json',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Origin': 'https://cobalt.tools',
+                'Referer': 'https://cobalt.tools/'
+            }
+        },
+        {
+            name: 'AllTube',
+            url: 'https://api.alltubedownload.com/api/info',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        },
+        {
+            name: 'Y2Mate',
+            url: 'https://www.y2mate.com/mates/analyzeV2/ajax',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        }
     ]
 };
 
@@ -26,30 +48,35 @@ let appState = {
     selectedFormat: 'mp4',
     selectedQuality: '720',
     downloadHistory: JSON.parse(localStorage.getItem('downloadHistory') || '[]'),
-    videoInfo: null, // Store video info with file sizes
-    isProcessing: false
+    videoInfo: null,
+    isProcessing: false,
+    retryCount: 0,
+    maxRetries: 3
 };
 
 // DOM Elements
 const elements = {
     input: document.getElementById('inputUrl'),
-    searchBtn: document.getElementById('searchBtn'),
+    downloadBtn: document.getElementById('downloadBtn'),
     pasteBtn: document.getElementById('pasteBtn'),
     videoSection: document.getElementById('videoDetailsSection'),
-    searchSection: document.getElementById('searchSection'),
+    downloadSection: document.getElementById('downloadSection'),
     publicLinkSection: document.getElementById('publicLinkSection'),
     historySection: document.getElementById('downloadHistorySection'),
-    resultSection: document.getElementById('searchResultsSection'),
     spinner: document.getElementById('loadingSpinner'),
+    loadingText: document.getElementById('loadingText'),
     notification: document.getElementById('notification'),
-    downloadBtn: document.getElementById('downloadVideoBtn')
+    downloadVideoBtn: document.getElementById('downloadVideoBtn')
 };
 
 // ===== UTILITY FUNCTIONS =====
 
-function showSpinner(show = true) {
+function showSpinner(show = true, text = 'Loading...') {
     if (elements.spinner) {
         elements.spinner.classList.toggle('show', show);
+        if (elements.loadingText) {
+            elements.loadingText.textContent = text;
+        }
     }
 }
 
@@ -75,10 +102,9 @@ function showNotification(title, message, type = 'success') {
 function hideAllSections() {
     const sections = [
         elements.videoSection, 
-        elements.searchSection, 
+        elements.downloadSection, 
         elements.publicLinkSection, 
-        elements.historySection, 
-        elements.resultSection
+        elements.historySection
     ];
     
     sections.forEach(el => {
@@ -101,6 +127,11 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     
     return `${(bytes / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0)} ${units[i]}`;
+}
+
+// Sleep function for delays
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ===== PLATFORM DETECTION =====
@@ -228,55 +259,150 @@ async function fetchVideoInfo(url) {
     }
 }
 
-// ===== YOUTUBE SEARCH FUNCTIONALITY =====
+// ===== DOWNLOAD WITH RETRY LOGIC =====
 
-async function searchYouTube(query) {
-    try {
-        console.log('Searching YouTube for:', query);
+async function downloadWithRetry(url, format, quality, isAudio) {
+    let lastError = null;
+    
+    for (let i = 0; i < CONFIG.downloadAPIs.length; i++) {
+        const api = CONFIG.downloadAPIs[i];
         
-        // Try each Invidious instance until one succeeds
-        for (const instance of CONFIG.invidiousInstances) {
-            try {
-                console.log(`Trying Invidious instance: ${instance}`);
-                const searchUrl = `${instance}/api/v1/search?q=${encodeURIComponent(query)}`;
-                
-                const response = await fetch(searchUrl);
-                
-                if (!response.ok) {
-                    throw new Error(`Invidious instance returned status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log(`Invidious response from ${instance}:`, data.length, 'items');
-                
-                // Map the Invidious response to the format expected by the frontend
-                const results = data.map(item => ({
-                    id: item.videoId,
-                    title: item.title,
-                    channel: item.author,
-                    thumbnail: item.videoThumbnails?.find(t => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url,
-                    duration: item.lengthSeconds ? `${Math.floor(item.lengthSeconds / 60)}:${(item.lengthSeconds % 60).toString().padStart(2, '0')}` : '',
-                    platform: 'youtube'
-                }));
-
-                if (results.length > 0) {
-                    console.log(`Success with ${instance}, found ${results.length} results`);
-                    return results;
-                }
-            } catch (err) {
-                console.warn(`Invidious instance ${instance} failed:`, err.message);
-                // Continue to next instance
+        try {
+            showSpinner(true, `Trying ${api.name} API (${i + 1}/${CONFIG.downloadAPIs.length})...`);
+            
+            console.log(`Trying API ${i + 1}: ${api.name}`);
+            
+            let result;
+            
+            if (api.name === 'Cobalt') {
+                result = await tryCobaltAPI(url, format, quality, isAudio, api);
+            } else if (api.name === 'AllTube') {
+                result = await tryAllTubeAPI(url, format, quality, isAudio, api);
+            } else if (api.name === 'Y2Mate') {
+                result = await tryY2MateAPI(url, format, quality, isAudio, api);
+            }
+            
+            if (result && result.url) {
+                showSpinner(false);
+                showNotification('Success', `Download link generated using ${api.name}!`);
+                return result;
+            }
+            
+        } catch (error) {
+            lastError = error;
+            console.warn(`${api.name} API failed:`, error.message);
+            
+            if (i < CONFIG.downloadAPIs.length - 1) {
+                await sleep(2000); // Wait 2 seconds before trying next API
             }
         }
-        
-        // If all instances fail, return empty array
-        console.warn('All Invidious instances failed');
-        return [];
-        
-    } catch (error) {
-        console.error('YouTube Search Error:', error);
-        return [];
     }
+    
+    showSpinner(false);
+    throw new Error(`All download APIs failed. Last error: ${lastError?.message || 'Unknown error'}`);
+}
+
+// ===== API IMPLEMENTATIONS =====
+
+async function tryCobaltAPI(url, format, quality, isAudio, api) {
+    const response = await fetch(api.url, {
+        method: 'POST',
+        headers: api.headers,
+        body: JSON.stringify({
+            url: url,
+            vCodec: 'h264',
+            vQuality: quality,
+            aFormat: 'mp3',
+            isAudioOnly: isAudio,
+            filenamePattern: 'pretty'
+        })
+    });
+    
+    const text = await response.text();
+    
+    // Check if response is HTML (error) or JSON (success)
+    if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+        throw new Error('Cobalt API blocked by Cloudflare');
+    }
+    
+    if (!response.ok) {
+        throw new Error(`Cobalt API error: ${response.status}`);
+    }
+    
+    const data = JSON.parse(text);
+    
+    if (data.status === 'error' || data.status === 'rate-limit') {
+        throw new Error(data.text || 'Cobalt API error');
+    }
+    
+    return data;
+}
+
+async function tryAllTubeAPI(url, format, quality, isAudio, api) {
+    const response = await fetch(`${api.url}?url=${encodeURIComponent(url)}`, {
+        headers: api.headers
+    });
+    
+    if (!response.ok) {
+        throw new Error(`AllTube API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Find the best format based on requested quality
+    let selectedFormat = data.formats?.find(f => 
+        f.qualityLabel && f.qualityLabel.includes(quality)
+    ) || data.formats?.[0];
+    
+    if (!selectedFormat) {
+        throw new Error('No suitable format found');
+    }
+    
+    return {
+        url: selectedFormat.url,
+        title: data.title,
+        filename: data.title,
+        filesize: selectedFormat.filesize
+    };
+}
+
+async function tryY2MateAPI(url, format, quality, isAudio, api) {
+    // Step 1: Analyze video
+    const formData = new FormData();
+    formData.append('k_query', url);
+    formData.append('k_page', 'home');
+    
+    const analyzeResponse = await fetch(api.url, {
+        method: 'POST',
+        headers: api.headers,
+        body: formData
+    });
+    
+    if (!analyzeResponse.ok) {
+        throw new Error(`Y2Mate analyze error: ${analyzeResponse.status}`);
+    }
+    
+    const analyzeData = await analyzeResponse.json();
+    
+    if (!analyzeData.links) {
+        throw new Error('No download links found');
+    }
+    
+    // Find the best quality
+    const qualityKey = `${quality}p`;
+    let videoLink = analyzeData.links.mp4?.[qualityKey] || 
+                   analyzeData.links.mp4?.['360p'] || 
+                   Object.values(analyzeData.links.mp4 || {})[0];
+    
+    if (!videoLink) {
+        throw new Error('No suitable quality found');
+    }
+    
+    return {
+        url: videoLink[0]?.k || videoLink,
+        title: analyzeData.title,
+        filename: analyzeData.title
+    };
 }
 
 // ===== VIDEO DETAILS =====
@@ -284,7 +410,7 @@ async function searchYouTube(query) {
 async function loadVideoDetails(url) {
     if (appState.isProcessing) return;
     
-    showSpinner(true);
+    showSpinner(true, 'Analyzing URL...');
     appState.isProcessing = true;
     
     try {
@@ -298,12 +424,11 @@ async function loadVideoDetails(url) {
             author: 'Unknown'
         };
         
-        // Fetch video info from the backend proxy
+        // Fetch video info
         const videoInfo = await fetchVideoInfo(validatedUrl);
         appState.videoInfo = videoInfo;
         
         if (videoInfo) {
-            // Update video state with info from the API
             appState.currentVideo.title = videoInfo.title || videoInfo.filename || 'Video';
             appState.currentVideo.thumbnail = videoInfo.thumbnail || appState.currentVideo.thumbnail;
             appState.currentVideo.author = videoInfo.uploader || videoInfo.channel || 'Unknown';
@@ -315,8 +440,8 @@ async function loadVideoDetails(url) {
         
     } catch (error) {
         console.error('Load video details error:', error);
-        showNotification('Error', error.message, 'error');
-        showSection(elements.searchSection); // Go back to search on error
+        showErrorModal(error.message);
+        showSection(elements.downloadSection);
     } finally {
         showSpinner(false);
         appState.isProcessing = false;
@@ -369,7 +494,7 @@ function displayVideoDetails() {
         description.textContent = descText;
     }
     
-    // Generate format options with real file sizes
+    // Generate format options
     generateFormatOptions();
 }
 
@@ -415,7 +540,6 @@ function generateFormatOptions() {
     appState.selectedQuality = '720';
 }
 
-// FIXED: Rewrite selectFormat function to properly update state and radio buttons
 function selectFormat(format, quality, element) {
     console.log('Selecting format:', format, 'quality:', quality);
     
@@ -425,7 +549,7 @@ function selectFormat(format, quality, element) {
     // Add selected class to clicked element
     element.classList.add('selected');
     
-    // CRITICAL FIX: Update appState correctly
+    // Update appState
     appState.selectedFormat = format;
     appState.selectedQuality = quality;
     
@@ -443,7 +567,7 @@ function selectFormat(format, quality, element) {
 async function generateDownloadLink() {
     if (appState.isProcessing) return;
     
-    const btn = elements.downloadBtn;
+    const btn = elements.downloadVideoBtn;
     if (!btn || !appState.currentVideo) return;
     
     // Show loading state
@@ -460,33 +584,29 @@ async function generateDownloadLink() {
             isAudio: isAudio
         });
         
-        const response = await fetch(CONFIG.apis.download, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                url: appState.currentVideo.url,
-                quality: appState.selectedQuality,
-                isAudio: isAudio
-            })
-        });
+        // Use retry logic with multiple APIs
+        const downloadData = await downloadWithRetry(
+            appState.currentVideo.url,
+            appState.selectedFormat,
+            appState.selectedQuality,
+            isAudio
+        );
         
-        console.log('Download response status:', response.status);
-        
-        // FIXED: Check if response is OK before parsing JSON
-        if (!response.ok) {
-            // Read response as text to debug what server returned
-            const errorText = await response.text();
-            console.error('Server returned error:', errorText);
-            throw new Error(`Server error: ${response.status}. ${errorText}`);
-        }
-        
-        const downloadData = await response.json();
         console.log('Download data:', downloadData);
-
-        if (!downloadData.url) {
-            throw new Error('No download link received from the server.');
+        
+        // Try to get file size
+        if (downloadData && downloadData.url) {
+            try {
+                const headResponse = await fetch(downloadData.url, { method: 'HEAD' });
+                if (headResponse.ok) {
+                    const contentLength = headResponse.headers.get('content-length');
+                    if (contentLength) {
+                        downloadData.fileSize = parseInt(contentLength);
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not fetch file size:', e);
+            }
         }
         
         // Save to history
@@ -509,7 +629,7 @@ async function generateDownloadLink() {
         
     } catch (error) {
         console.error('Download error:', error);
-        showNotification('Error', error.message, 'error');
+        showErrorModal(error.message);
     } finally {
         btn.classList.remove('loading');
         btn.disabled = false;
@@ -531,124 +651,91 @@ function displayPublicLink(item) {
     showSection(elements.publicLinkSection);
 }
 
-// ===== SEARCH FUNCTIONALITY =====
+// ===== INPUT PROCESSING =====
 
-async function performSearch(query) {
-    if (appState.isProcessing) return;
+async function startDownload() {
+    const input = elements.input.value.trim();
     
-    showSpinner(true);
-    appState.isProcessing = true;
-    showSection(elements.resultSection);
+    if (!input) {
+        showNotification('Error', 'Please enter a video URL', 'error');
+        return;
+    }
     
-    // Show loading skeleton
-    const skeleton = document.getElementById('searchLoadingSkeleton');
-    const container = document.getElementById('searchResultsContainer');
-    const emptyState = document.getElementById('searchEmptyState');
-    
-    if (skeleton) skeleton.classList.remove('hidden');
-    if (container) container.innerHTML = '';
-    if (emptyState) emptyState.classList.add('hidden');
-    
+    await loadVideoDetails(input);
+}
+
+async function pasteFromClipboard() {
     try {
-        // Try to detect if it's a URL first
-        const urlPattern = /^https?:\/\/.+/i;
-        
-        if (urlPattern.test(query)) {
-            // It's a URL, load video details directly
-            await loadVideoDetails(query);
-            return;
+        const text = await navigator.clipboard.readText();
+        if (elements.input) {
+            elements.input.value = text;
+            showNotification('Success', 'URL pasted!');
+            // Automatically process after pasting
+            await startDownload();
         }
-        
-        // It's a search query, search YouTube
-        const results = await searchYouTube(query);
-        
-        if (skeleton) skeleton.classList.add('hidden');
-        
-        if (results.length > 0) {
-            displaySearchResults(results);
-        } else {
-            if (emptyState) emptyState.classList.remove('hidden');
-        }
-        
-    } catch (error) {
-        console.error('Perform search error:', error);
-        showNotification('Error', error.message, 'error');
-        if (skeleton) skeleton.classList.add('hidden');
-        if (emptyState) emptyState.classList.remove('hidden');
-    } finally {
-        showSpinner(false);
-        appState.isProcessing = false;
+    } catch (err) {
+        console.error('Clipboard error:', err);
+        showNotification('Error', 'Could not access clipboard', 'error');
     }
 }
 
-function displaySearchResults(results) {
-    const container = document.getElementById('searchResultsContainer');
-    if (!container) return;
-    
-    console.log('Displaying search results:', results);
-    
-    container.innerHTML = results.map(item => `
-        <div class="search-result-card" onclick="loadVideoFromSearch('${item.id}')">
-            <div class="result-thumbnail">
-                <img src="${item.thumbnail}" alt="${item.title}" onerror="this.src='https://via.placeholder.com/350x200?text=Video'">
-                <div class="platform-badge">
-                    <i class="fab fa-youtube"></i>
-                </div>
-                ${item.duration ? `<div class="duration-badge">${item.duration}</div>` : ''}
-            </div>
-            <div class="result-info">
-                <div class="result-title">${item.title}</div>
-                <div class="result-meta">
-                    <div class="channel-name">
-                        <i class="fas fa-user"></i>
-                        <span>${item.channel || item.author}</span>
-                    </div>
-                </div>
-            </div>
-            <button class="quick-download-btn" onclick="event.stopPropagation(); quickDownload('${item.id}')">
-                <i class="fas fa-download"></i>
-            </button>
-        </div>
-    `).join('');
+// ===== UI ACTIONS =====
+
+function copyPublicLink() {
+    const input = document.getElementById('publicLinkInput');
+    if (input) {
+        input.select();
+        document.execCommand('copy');
+        showNotification('Success', 'Link copied!');
+    }
 }
 
-async function loadVideoFromSearch(videoId) {
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    await loadVideoDetails(url);
+function triggerDirectDownload() {
+    const url = document.getElementById('publicLinkInput')?.value;
+    if (url) {
+        window.open(url, '_blank');
+        showNotification('Success', 'Download started!');
+    }
 }
 
-async function quickDownload(videoId) {
-    const url = `https://www.youtube.com/watch?v=${videoId}`;
-    
-    try {
-        // Directly call the download API for quick download
-        const response = await fetch(CONFIG.apis.download, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ url, quality: '720', isAudio: false })
+function shareDownloadLink() {
+    const url = document.getElementById('publicLinkInput')?.value;
+    if (url && navigator.share) {
+        navigator.share({
+            title: 'Check out this video!',
+            url: url
         });
-        
-        // Check if response is OK before parsing JSON
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Server returned error:', errorText);
-            throw new Error(`Server error: ${response.status}. ${errorText}`);
-        }
-        
-        const downloadData = await response.json();
-        console.log('Quick download data:', downloadData);
+    } else if (url) {
+        copyPublicLink();
+    }
+}
 
-        if (downloadData && downloadData.url) {
-            window.open(downloadData.url, '_blank');
-            showNotification('Success', 'Download started!');
-        } else {
-            throw new Error('Could not generate download link.');
-        }
-    } catch (error) {
-        console.error('Quick download error:', error);
-        showNotification('Error', error.message, 'error');
+// ===== ERROR HANDLING =====
+
+function showErrorModal(message) {
+    const modal = document.getElementById('errorModal');
+    const errorTitle = document.getElementById('errorTitle');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    if (modal && errorTitle && errorMessage) {
+        errorTitle.textContent = 'Download Failed';
+        errorMessage.textContent = message || 'Unable to download video. Please try again later.';
+        
+        modal.classList.add('show');
+    }
+}
+
+function closeErrorModal() {
+    const modal = document.getElementById('errorModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+function retryDownload() {
+    closeErrorModal();
+    if (appState.currentVideo) {
+        generateDownloadLink();
     }
 }
 
@@ -714,64 +801,7 @@ function clearDownloadHistory() {
     }
 }
 
-// ===== INPUT PROCESSING =====
-
-async function processInput() {
-    const input = elements.input.value.trim();
-    
-    if (!input) {
-        showNotification('Error', 'Please enter a URL or search query', 'error');
-        return;
-    }
-    
-    await performSearch(input);
-}
-
-async function pasteFromClipboard() {
-    try {
-        const text = await navigator.clipboard.readText();
-        if (elements.input) {
-            elements.input.value = text;
-            showNotification('Success', 'URL pasted!');
-            // Automatically process after pasting
-            await processInput();
-        }
-    } catch (err) {
-        console.error('Clipboard error:', err);
-        showNotification('Error', 'Could not access clipboard', 'error');
-    }
-}
-
 // ===== UI ACTIONS =====
-
-function copyPublicLink() {
-    const input = document.getElementById('publicLinkInput');
-    if (input) {
-        input.select();
-        document.execCommand('copy');
-        showNotification('Success', 'Link copied!');
-    }
-}
-
-function triggerDirectDownload() {
-    const url = document.getElementById('publicLinkInput')?.value;
-    if (url) {
-        window.open(url, '_blank');
-        showNotification('Success', 'Download started!');
-    }
-}
-
-function shareDownloadLink() {
-    const url = document.getElementById('publicLinkInput')?.value;
-    if (url && navigator.share) {
-        navigator.share({
-            title: 'Check out this video!',
-            url: url
-        });
-    } else if (url) {
-        copyPublicLink();
-    }
-}
 
 function toggleMenu() {
     const menu = document.getElementById('menu');
@@ -784,11 +814,7 @@ function toggleLangDropdown() {
 }
 
 function closeVideoDetails() {
-    showSection(elements.searchSection);
-}
-
-function closeSearchResults() {
-    showSection(elements.searchSection);
+    showSection(elements.downloadSection);
 }
 
 // ===== THEME & LANGUAGE =====
@@ -824,6 +850,29 @@ function openSettings() {
 function closeSettings() {
     const modal = document.getElementById('settingsModal');
     if (modal) modal.classList.remove('show');
+}
+
+function savePlatformSettings() {
+    const settings = {};
+    ['youtube', 'instagram', 'tiktok', 'streamnet', 'diskwala'].forEach(platform => {
+        const format = document.getElementById(`${platform}-format`)?.value;
+        const quality = document.getElementById(`${platform}-quality`)?.value;
+        if (format && quality) {
+            settings[platform] = { format, quality };
+        }
+    });
+    localStorage.setItem('platformSettings', JSON.stringify(settings));
+    closeSettings();
+    showNotification('Settings Saved', 'Platform settings have been saved');
+}
+
+function resetDefaultSettings() {
+    if (confirm('Are you sure you want to reset all settings to default?')) {
+        localStorage.removeItem('theme');
+        localStorage.removeItem('language');
+        localStorage.removeItem('platformSettings');
+        location.reload();
+    }
 }
 
 function showPage(page) {
@@ -926,7 +975,6 @@ function shareApp() {
             url: window.location.origin
         });
     } else {
-        // Fallback for browsers that do not support the Web Share API
         showPage('share');
         const modal = document.getElementById('pageModal');
         const title = document.getElementById('pageModalTitle');
@@ -975,38 +1023,6 @@ function copyShareLink() {
     });
 }
 
-function savePlatformSettings() {
-    const settings = {};
-    ['youtube', 'instagram', 'tiktok', 'streamnet', 'diskwala'].forEach(platform => {
-        const format = document.getElementById(`${platform}-format`)?.value;
-        const quality = document.getElementById(`${platform}-quality`)?.value;
-        if (format && quality) {
-            settings[platform] = { format, quality };
-        }
-    });
-    localStorage.setItem('platformSettings', JSON.stringify(settings));
-    closeSettings();
-    showNotification('Settings Saved', 'Platform settings have been saved');
-}
-
-function resetDefaultSettings() {
-    if (confirm('Are you sure you want to reset all settings to default?')) {
-        localStorage.removeItem('theme');
-        localStorage.removeItem('language');
-        localStorage.removeItem('platformSettings');
-        location.reload();
-    }
-}
-
-// ===== SEARCH & SUGGESTIONS =====
-
-function searchSuggestion(query) {
-    if (elements.input) {
-        elements.input.value = query;
-        processInput();
-    }
-}
-
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1024,9 +1040,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentLang) currentLang.textContent = savedLang.toUpperCase();
     }
     
-    // Search button
-    if (elements.searchBtn) {
-        elements.searchBtn.addEventListener('click', processInput);
+    // Download button
+    if (elements.downloadBtn) {
+        elements.downloadBtn.addEventListener('click', startDownload);
     }
     
     // Paste button
@@ -1037,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Enter key on input
     if (elements.input) {
         elements.input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') processInput();
+            if (e.key === 'Enter') startDownload();
         });
     }
     
@@ -1073,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== GLOBAL FUNCTIONS =====
 // Make functions globally available for onclick handlers
-window.processInput = processInput;
+window.startDownload = startDownload;
 window.pasteFromClipboard = pasteFromClipboard;
 window.generateDownloadLink = generateDownloadLink;
 window.selectFormat = selectFormat;
@@ -1097,7 +1113,5 @@ window.shareApp = shareApp;
 window.shareViaWhatsApp = shareViaWhatsApp;
 window.shareViaTelegram = shareViaTelegram;
 window.copyShareLink = copyShareLink;
-window.searchSuggestion = searchSuggestion;
-window.closeSearchResults = closeSearchResults;
-window.loadVideoFromSearch = loadVideoFromSearch;
-window.quickDownload = quickDownload;
+window.closeErrorModal = closeErrorModal;
+window.retryDownload = retryDownload;

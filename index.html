@@ -68,7 +68,6 @@
         "Video Download",
         "Audio Extraction",
         "Hi-Res Audio",
-        "Playlist Downloads",
         "Global Platform Support"
       ],
       "datePublished": "2025-01-01",
@@ -91,7 +90,7 @@
     <!-- Loading Spinner -->
     <div class="loading-spinner hidden" id="loadingSpinner">
         <div class="spinner"></div>
-        <p>Loading...</p>
+        <p id="loadingText">Loading...</p>
     </div>
 
     <!-- NOTIFICATION -->
@@ -142,15 +141,13 @@
             <div class="d-item" onclick="showPage('contact')">📧 Contact Us</div>
             <div class="d-item" onclick="showPage('privacy')">🔒 Privacy Policy</div>
             <div class="d-item" onclick="showPage('faq')">❓ FAQ</div>
-            <div class="d-item" onclick="showPage('blog')">📝 Blog</div>
-            <div class="d-item" onclick="showPage('docs')">📚 Docs</div>
             <div class="d-item" onclick="shareApp()">🔗 Share with Friends</div>
         </div>
     </header>
 
     <main>
-        <!-- HERO & SEARCH -->
-        <div class="hero-container" id="searchSection">
+        <!-- HERO & DOWNLOAD -->
+        <div class="hero-container" id="downloadSection">
             <h1 class="hero-title glitch">Premium Media Downloader</h1>
             <p style="color:var(--text-muted);">Download High-Quality Media from All Social Media Platforms</p>
             
@@ -159,21 +156,21 @@
                     <i class="fas fa-paste"></i>
                     Paste
                 </button>
-                <input type="text" class="main-input" id="inputUrl" placeholder="Paste URL or Search Song Name...">
-                <button class="search-btn" id="searchBtn" onclick="processInput()">FETCH</button>
+                <input type="text" class="main-input" id="inputUrl" placeholder="Paste video URL here...">
+                <button class="search-btn" id="downloadBtn" onclick="startDownload()">DOWNLOAD</button>
             </div>
             
-            <!-- Live Stats Bar -->
-            <div class="stats-bar">
-                <div class="stat-item">
+            <!-- Download Status -->
+            <div class="download-status" id="downloadStatus">
+                <div class="status-item">
                     <div class="status-indicator"></div>
                     <span>Server Status: Online</span>
                 </div>
-                <div class="stat-item">
+                <div class="status-item">
                     <i class="fas fa-bolt"></i>
                     <span>⚡ 12ms Latency</span>
                 </div>
-                <div class="stat-item">
+                <div class="status-item">
                     <i class="fas fa-download"></i>
                     <span id="downloadCount">1,024 Downloads Today</span>
                 </div>
@@ -263,70 +260,6 @@
                                 <span>Processing...</span>
                             </div>
                         </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SEARCH RESULTS SECTION -->
-        <section id="searchResultsSection" class="hidden">
-            <div class="container glass-panel">
-                <div class="section-header">
-                    <h2>Search Results</h2>
-                    <button class="close-section-btn" onclick="closeSearchResults()">×</button>
-                </div>
-                
-                <!-- Loading Skeleton -->
-                <div id="searchLoadingSkeleton" class="skeleton-loader hidden">
-                    <div class="skeleton-card">
-                        <div class="skeleton-thumbnail"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                    </div>
-                    <div class="skeleton-card">
-                        <div class="skeleton-thumbnail"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                    </div>
-                    <div class="skeleton-card">
-                        <div class="skeleton-thumbnail"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                    </div>
-                    <div class="skeleton-card">
-                        <div class="skeleton-thumbnail"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                    </div>
-                    <div class="skeleton-card">
-                        <div class="skeleton-thumbnail"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                    </div>
-                    <div class="skeleton-card">
-                        <div class="skeleton-thumbnail"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                    </div>
-                </div>
-                
-                <!-- Results Grid -->
-                <div class="search-results-grid" id="searchResultsContainer">
-                    <!-- Dynamically generated result cards -->
-                </div>
-                
-                <!-- Empty State -->
-                <div id="searchEmptyState" class="empty-state hidden">
-                    <i class="fas fa-search"></i>
-                    <h3>No Results Found</h3>
-                    <p>Try searching with different keywords</p>
-                    <div class="suggestions">
-                        <p>Popular searches:</p>
-                        <div class="suggestion-tags">
-                            <span class="suggestion-tag" onclick="searchSuggestion('trending music')">Trending Music</span>
-                            <span class="suggestion-tag" onclick="searchSuggestion('popular videos')">Popular Videos</span>
-                            <span class="suggestion-tag" onclick="searchSuggestion('latest songs')">Latest Songs</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -579,70 +512,39 @@
         </div>
     </section>
 
-    <!-- BOTTOM SHEET MODAL -->
-    <div class="bottom-sheet" id="bottomSheet">
-        <div class="bottom-sheet-header">
-            <h3>Download video as</h3>
-            <button class="close-btn" onclick="closeBottomSheet()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="bottom-sheet-content">
-            <!-- Music Section -->
-            <div class="format-section">
-                <h4>Music</h4>
-                <div class="format-options">
-                    <label class="format-option">
-                        <div class="format-info">
-                            <span class="format-name">Fast</span>
-                            <span class="format-size">3.9MB</span>
+    <!-- ERROR MODAL -->
+    <div class="popup-overlay" id="errorModal">
+        <div class="popup">
+            <div class="popup-header">
+                <div class="popup-title">Download Error</div>
+                <button class="popup-close" onclick="closeErrorModal()">×</button>
+            </div>
+            
+            <div class="popup-content">
+                <div class="error-container">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="error-content">
+                        <h4 id="errorTitle">Download Failed</h4>
+                        <p id="errorMessage">Unable to download the video. Please try again later.</p>
+                        <div class="error-tips" id="errorTips">
+                            <h5>Possible Solutions:</h5>
+                            <ul>
+                                <li>Check if the URL is correct</li>
+                                <li>Try a different video quality</li>
+                                <li>Video might be private or deleted</li>
+                                <li>Try again in a few minutes</li>
+                            </ul>
                         </div>
-                        <input type="radio" name="format" value="fast-mp3">
-                    </label>
-                    <label class="format-option">
-                        <div class="format-info">
-                            <span class="format-name">Classic MP3</span>
-                            <span class="format-size">4.1MB</span>
-                        </div>
-                        <input type="radio" name="format" value="classic-mp3" checked>
-                    </label>
+                    </div>
                 </div>
             </div>
             
-            <!-- Video Section -->
-            <div class="section">
-                <h4>Video</h4>
-                <div class="format-options">
-                    <label class="format-option">
-                        <div class="format-info">
-                            <span class="format-name">Fast (360p)</span>
-                            <span class="format-size">17.8MB</span>
-                        </div>
-                        <input type="radio" name="format" value="fast-360p">
-                    </label>
-                    <label class="format-option">
-                        <div class="format-info">
-                            <span class="format-name">High quality (720p)</span>
-                            <span class="format-size">66.6MB</span>
-                        </div>
-                        <input type="radio" name="format" value="high-720p">
-                    </label>
-                    <label class="format-option">
-                        <div class="format-info">
-                            <span class="format-name">1080p HD</span>
-                            <span class="format-size">140MB</span>
-                        </div>
-                        <input type="radio" name="format" value="1080p-hd">
-                    </label>
-                </div>
+            <div class="popup-actions">
+                <button class="popup-btn popup-btn-cancel" onclick="closeErrorModal()">Close</button>
+                <button class="popup-btn popup-btn-download" onclick="retryDownload()">Try Again</button>
             </div>
-        </div>
-        
-        <div class="bottom-sheet-footer">
-            <button class="download-btn" id="downloadBtn" onclick="generatePublicLink()">
-                Generate Download Link
-            </button>
         </div>
     </div>
 
@@ -840,27 +742,6 @@
             
             <div class="popup-actions">
                 <button class="popup-btn popup-btn-cancel" onclick="closePageModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- QR Code Modal -->
-    <div class="popup-overlay" id="qrModal">
-        <div class="popup">
-            <div class="popup-header">
-                <div class="popup-title">Share QR Code</div>
-                <button class="popup-close" onclick="closeQrModal()">×</button>
-            </div>
-            
-            <div class="popup-content">
-                <div id="qrCodeContainer" style="display: flex; justify-content: center; margin: 20px 0;">
-                    <!-- QR code will be generated here -->
-                </div>
-                <p style="text-align: center; margin-top: 15px;">Scan this QR code to share the download link</p>
-            </div>
-            
-            <div class="popup-actions">
-                <button class="popup-btn popup-btn-cancel" onclick="closeQrModal()">Close</button>
             </div>
         </div>
     </div>

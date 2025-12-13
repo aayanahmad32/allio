@@ -1,7 +1,7 @@
 {
-  "name": "allio-pro",
-  "version": "1.0.40",
-  "description": "Premium Media Downloader",
+  "name": "allio-pro-downloader",
+  "version": "1.0.41",
+  "description": "Premium Media Downloader Backend and Frontend",
   "main": "server.js",
   "engines": {
     "node": "20.x"
@@ -11,14 +11,14 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.1.5",
-    "jsdom": "^23.0.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "jsdom": "^24.0.0",
     "node-fetch": "^2.7.0"
   },
   "keywords": [
+    "video",
     "downloader",
-    "youtube",
     "express",
     "vercel"
   ],
