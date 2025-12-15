@@ -63,7 +63,84 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Get video info (proxy to avoid CORS)
+/**
+ * SMART PROXY ENDPOINT
+ * This is the core of our new download strategy.
+ * Instead of relying on blocked third-party APIs, we act as a CORS proxy
+ * to fetch the raw HTML of a video page. The frontend then parses this HTML
+ * to extract download URLs and metadata.
+ */
+app.post('/api/fetch-page', async (req, res) => {
+    try {
+        const { url } = req.body;
+        
+        if (!url) {
+            return res.status(400).json({ error: 'URL required' });
+        }
+
+        // Check cache
+        const cacheKey = `page_${url}`;
+        const cached = getCache(cacheKey);
+        if (cached) {
+            console.log('Returning cached page content for:', url);
+            return res.json({ html: cached });
+        }
+
+        console.log('Fetching page via proxy for:', url);
+
+        // Fetch the page with browser-like headers to avoid blocks
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Cache-Control': 'max-age=0'
+            }
+        });
+
+        if (!response.ok) {
+            console.error(`Proxy fetch failed for ${url}: ${response.status} ${response.statusText}`);
+            return res.status(response.status).json({ error: `Failed to fetch page: ${response.status}` });
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('text/html')) {
+            console.error(`Proxy fetch for ${url} returned non-HTML content-type: ${contentType}`);
+            return res.status(400).json({ error: 'URL did not return an HTML page. May be a direct link or blocked.' });
+        }
+
+        const html = await response.text();
+        
+        // Cache the successful result
+        setCache(cacheKey, html);
+
+        console.log(`Successfully fetched and cached page for ${url}`);
+        res.json({ html: html });
+
+    } catch (error) {
+        console.error('Proxy fetch error:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch page via proxy',
+            message: error.message 
+        });
+    }
+});
+
+
+/**
+ * Get video info endpoint.
+ * This endpoint now primarily uses YouTube oEmbed for reliable metadata.
+ * It acts as a proxy for the oEmbed request to bypass CORS.
+ */
 app.post('/api/video-info', async (req, res) => {
     try {
         const { url } = req.body;
@@ -83,13 +160,18 @@ app.post('/api/video-info', async (req, res) => {
         }
 
         let data = null;
+        const platform = detectPlatform(url);
 
-        // CRITICAL FIX: For YouTube, try oEmbed FIRST for reliability
-        if (detectPlatform(url) === 'youtube') {
+        // For YouTube, try oEmbed FIRST for reliability
+        if (platform === 'youtube') {
             try {
-                console.log('Trying YouTube oEmbed first');
-                const oembedData = await fetchYouTubeOEmbed(url);
-                if (oembedData) {
+                console.log('Trying YouTube oEmbed for metadata');
+                const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+                const oembedResponse = await fetch(oembedUrl);
+                
+                if (oembedResponse.ok) {
+                    const oembedData = await oembedResponse.json();
+                    // Add dummy file size info for format options
                     data = {
                         title: oembedData.title,
                         uploader: oembedData.author_name,
@@ -103,35 +185,18 @@ app.post('/api/video-info', async (req, res) => {
                         ]
                     };
                     console.log('YouTube oEmbed success:', data);
+                } else {
+                    throw new Error(`YouTube oEmbed request failed: ${oembedResponse.status}`);
                 }
             } catch (oembedError) {
-                console.warn('YouTube oEmbed failed, falling back to Cobalt:', oembedError.message);
+                console.warn('YouTube oEmbed failed. The frontend will handle direct extraction.', oembedError.message);
+                // We don't fail here. The frontend will use the /api/fetch-page endpoint.
+                // We return a minimal response to indicate the process should continue.
+                data = { status: 'frontend_extraction_required' };
             }
-        }
-
-        // If oEmbed failed or it's not a YouTube URL, use Cobalt as a fallback
-        if (!data) {
-            console.log('Using Cobalt API as fallback');
-            const cobaltResponse = await fetch('https://api.cobalt.tools/api/json', {
-                method: 'POST',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    url: url,
-                    vCodec: 'h264',
-                    vQuality: '720' // Default quality for info
-                })
-            });
-            
-            if (!cobaltResponse.ok) {
-                throw new Error(`Cobalt API request failed: ${cobaltResponse.status}`);
-            }
-            
-            data = await cobaltResponse.json();
-            console.log('Cobalt API response:', data);
+        } else {
+            // For other platforms, we also defer to the frontend's direct extraction.
+            data = { status: 'frontend_extraction_required' };
         }
         
         // Cache result
@@ -143,295 +208,6 @@ app.post('/api/video-info', async (req, res) => {
         console.error('Video info error:', error);
         res.status(500).json({ 
             error: 'Failed to fetch video info',
-            message: error.message 
-        });
-    }
-});
-
-// FIXED: Download endpoint (proxy) with proper headers and JSON payload handling
-app.post('/api/download', async (req, res) => {
-    try {
-        const { url, quality = '720', isAudio = false } = req.body;
-        
-        if (!url) {
-            return res.status(400).json({ error: 'URL required' });
-        }
-        
-        console.log('Download request:', { url, quality, isAudio });
-        
-        // Check cache
-        const cacheKey = `dl_${url}_${quality}_${isAudio}`;
-        const cached = getCache(cacheKey);
-        if (cached) {
-            console.log('Returning cached download link');
-            return res.json(cached);
-        }
-        
-        // CRITICAL FIX: Added proper headers to mimic a real browser
-        const response = await fetch('https://api.cobalt.tools/api/json', {
-            method: 'POST',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Origin': 'https://cobalt.tools',
-                'Referer': 'https://cobalt.tools/'
-            },
-            body: JSON.stringify({
-                url: url,
-                vCodec: 'h264',
-                vQuality: quality,
-                aFormat: 'mp3',
-                isAudioOnly: isAudio,
-                filenamePattern: 'pretty'
-            })
-        });
-        
-        console.log('Cobalt download response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Cobalt download error response:', errorText);
-            throw new Error(`Download request failed: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        console.log('Cobalt download data:', data);
-        
-        if (data.status === 'error' || data.status === 'rate-limit') {
-            return res.status(400).json({ 
-                error: data.text || 'Download failed' 
-            });
-        }
-        
-        // Try to get file size
-        if (data && data.url) {
-            try {
-                const headResponse = await fetch(data.url, { method: 'HEAD' });
-                if (headResponse.ok) {
-                    const contentLength = headResponse.headers.get('content-length');
-                    if (contentLength) {
-                        data.fileSize = parseInt(contentLength);
-                    }
-                }
-            } catch (e) {
-                console.warn('Could not fetch file size:', e);
-            }
-        }
-        
-        // Cache result
-        setCache(cacheKey, data);
-        
-        res.json(data);
-        
-    } catch (error) {
-        console.error('Download error:', error);
-        res.status(500).json({ 
-            error: 'Download failed',
-            message: error.message 
-        });
-    }
-});
-
-// FIXED: Multiple API download endpoint with retry logic
-app.post('/api/download-multi', async (req, res) => {
-    try {
-        const { url, quality = '720', isAudio = false } = req.body;
-        
-        if (!url) {
-            return res.status(400).json({ error: 'URL required' });
-        }
-        
-        console.log('Multi-API download request:', { url, quality, isAudio });
-        
-        // Check cache
-        const cacheKey = `dl_multi_${url}_${quality}_${isAudio}`;
-        const cached = getCache(cacheKey);
-        if (cached) {
-            console.log('Returning cached download link');
-            return res.json(cached);
-        }
-        
-        // Define multiple APIs to try
-        const apis = [
-            {
-                name: 'Cobalt',
-                url: 'https://api.cobalt.tools/api/json',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Origin': 'https://cobalt.tools',
-                    'Referer': 'https://cobalt.tools/'
-                }
-            },
-            {
-                name: 'AllTube',
-                url: `https://api.alltubedownload.com/api/info?url=${encodeURIComponent(url)}`,
-                method: 'GET',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Accept': 'application/json'
-                }
-            },
-            {
-                name: 'Y2Mate',
-                url: 'https://www.y2mate.com/mates/analyzeV2/ajax',
-                method: 'POST',
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
-            }
-        ];
-        
-        let lastError = null;
-        let result = null;
-        
-        // Try each API until one succeeds
-        for (let i = 0; i < apis.length; i++) {
-            const api = apis[i];
-            
-            try {
-                console.log(`Trying API ${i + 1}: ${api.name}`);
-                
-                let response;
-                
-                if (api.name === 'Cobalt') {
-                    response = await fetch(api.url, {
-                        method: 'POST',
-                        headers: api.headers,
-                        body: JSON.stringify({
-                            url: url,
-                            vCodec: 'h264',
-                            vQuality: quality,
-                            aFormat: 'mp3',
-                            isAudioOnly: isAudio,
-                            filenamePattern: 'pretty'
-                        })
-                    });
-                } else if (api.name === 'AllTube') {
-                    response = await fetch(api.url, {
-                        method: 'GET',
-                        headers: api.headers
-                    });
-                } else if (api.name === 'Y2Mate') {
-                    const formData = new URLSearchParams();
-                    formData.append('k_query', url);
-                    formData.append('k_page', 'home');
-                    
-                    response = await fetch(api.url, {
-                        method: 'POST',
-                        headers: api.headers,
-                        body: formData
-                    });
-                }
-                
-                const text = await response.text();
-                
-                // Check if response is HTML (error) or JSON (success)
-                if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-                    throw new Error(`${api.name} API blocked by Cloudflare`);
-                }
-                
-                if (!response.ok) {
-                    throw new Error(`${api.name} API error: ${response.status}`);
-                }
-                
-                const data = JSON.parse(text);
-                
-                if (api.name === 'Cobalt' && (data.status === 'error' || data.status === 'rate-limit')) {
-                    throw new Error(data.text || 'Cobalt API error');
-                }
-                
-                if (api.name === 'AllTube' && (!data.formats || data.formats.length === 0)) {
-                    throw new Error('No formats found in AllTube response');
-                }
-                
-                if (api.name === 'Y2Mate' && (!data.links || !data.links.mp4)) {
-                    throw new Error('No download links found in Y2Mate response');
-                }
-                
-                // Process successful response
-                if (api.name === 'AllTube') {
-                    // Find best format
-                    const selectedFormat = data.formats?.find(f => 
-                        f.qualityLabel && f.qualityLabel.includes(quality)
-                    ) || data.formats?.[0];
-                    
-                    if (selectedFormat) {
-                        result = {
-                            url: selectedFormat.url,
-                            title: data.title,
-                            filename: data.title,
-                            filesize: selectedFormat.filesize,
-                            api: api.name
-                        };
-                    }
-                } else if (api.name === 'Y2Mate') {
-                    // Find best quality
-                    const qualityKey = `${quality}p`;
-                    let videoLink = data.links.mp4?.[qualityKey] || 
-                                   data.links.mp4?.['360p'] || 
-                                   Object.values(data.links.mp4 || {})[0];
-                    
-                    if (videoLink) {
-                        result = {
-                            url: videoLink[0]?.k || videoLink,
-                            title: data.title,
-                            filename: data.title,
-                            api: api.name
-                        };
-                    }
-                } else {
-                    // Cobalt response
-                    result = {
-                        ...data,
-                        api: api.name
-                    };
-                }
-                
-                if (result && result.url) {
-                    console.log(`Success with ${api.name} API`);
-                    break;
-                }
-                
-            } catch (error) {
-                lastError = error;
-                console.warn(`${api.name} API failed:`, error.message);
-                continue;
-            }
-        }
-        
-        if (!result) {
-            throw new Error(`All APIs failed. Last error: ${lastError?.message || 'Unknown error'}`);
-        }
-        
-        // Try to get file size
-        if (result.url) {
-            try {
-                const headResponse = await fetch(result.url, { method: 'HEAD' });
-                if (headResponse.ok) {
-                    const contentLength = headResponse.headers.get('content-length');
-                    if (contentLength) {
-                        result.fileSize = parseInt(contentLength);
-                    }
-                }
-            } catch (e) {
-                console.warn('Could not fetch file size:', e);
-            }
-        }
-        
-        // Cache result
-        setCache(cacheKey, result);
-        
-        res.json(result);
-        
-    } catch (error) {
-        console.error('Multi-API download error:', error);
-        res.status(500).json({ 
-            error: 'Download failed',
             message: error.message 
         });
     }
@@ -505,7 +281,7 @@ app.post('/api/clear-cache', (req, res) => {
     res.json({ message: 'Cache cleared successfully' });
 });
 
-// Proxy endpoint for external APIs (to avoid CORS)
+// Proxy endpoint for external APIs (to avoid CORS) - Kept for flexibility
 app.post('/api/proxy', async (req, res) => {
     try {
         const { url, method = 'GET', headers = {}, body } = req.body;
@@ -614,18 +390,6 @@ function detectPlatform(url) {
     return 'unknown';
 }
 
-// CRITICAL FIX: Helper function for YouTube oEmbed
-async function fetchYouTubeOEmbed(url) {
-    console.log('Fetching YouTube oEmbed for:', url);
-    const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
-    if (!response.ok) {
-        throw new Error(`YouTube oEmbed request failed with status: ${response.status}`);
-    }
-    const data = await response.json();
-    console.log('YouTube oEmbed response:', data);
-    return data;
-}
-
 // Start server (only if not in Vercel)
 if (require.main === module) {
     app.listen(PORT, () => {
@@ -636,6 +400,7 @@ if (require.main === module) {
 ║   Environment: ${process.env.NODE_ENV || 'development'}     ║
 ║   Cache TTL: ${CACHE_TTL / 1000}s              ║
 ║   Rate Limit: 100 req/15min           ║
+║   Strategy: Smart Proxy + Frontend    ║
 ╚════════════════════════════════════════╝
         `);
     });

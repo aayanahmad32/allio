@@ -1900,6 +1900,82 @@ footer {
     font-size: 1.1rem;
 }
 
+/* --- PWA INSTALL PROMPT --- */
+.pwa-install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 15px 20px;
+    box-shadow: var(--glow);
+    z-index: 1000;
+    transition: all var(--transition-normal);
+}
+
+.pwa-install-prompt.hidden {
+    display: none;
+}
+
+.pwa-install-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.pwa-install-icon img {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+}
+
+.pwa-install-text h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+    color: var(--text-main);
+}
+
+.pwa-install-text p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.pwa-install-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.pwa-install-dismiss,
+.pwa-install-accept {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-normal);
+}
+
+.pwa-install-dismiss {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+}
+
+.pwa-install-accept {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.pwa-install-dismiss:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.pwa-install-accept:hover {
+    transform: translateY(-2px);
+}
+
 /* --- RESPONSIVE DESIGN --- */
 @media(max-width: 1024px) {
     .hero-title {
@@ -2064,6 +2140,24 @@ footer {
         grid-column: 1 / -1;
         min-height: 100px;
     }
+    
+    .pwa-install-prompt {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        transform: none;
+    }
+    
+    .pwa-install-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .pwa-install-actions {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 @media(max-width: 480px) {
@@ -2127,7 +2221,7 @@ footer {
 
 /* --- PRINT STYLES --- */
 @media print {
-    header, footer, .fab, .ad-banner, .notification, .loading-spinner {
+    header, footer, .fab, .ad-banner, .notification, .loading-spinner, .pwa-install-prompt {
         display: none !important;
     }
     

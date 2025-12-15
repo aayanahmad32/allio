@@ -1,27 +1,29 @@
 {
-  "name": "allio-pro-downloader",
-  "version": "1.0.41",
-  "description": "Premium Media Downloader Backend and Frontend",
-  "main": "server.js",
-  "engines": {
-    "node": "20.x"
-  },
+  "name": "allio-pro",
+  "version": "1.0.40",
+  "description": "Premium Media Downloader for YouTube, Instagram, TikTok, and more.",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.2.0",
-    "jsdom": "^24.0.0",
-    "node-fetch": "^2.7.0"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "keywords": [
-    "video",
     "downloader",
-    "express",
-    "vercel"
+    "video",
+    "youtube",
+    "tiktok",
+    "instagram"
   ],
   "author": "LoopLabs Tech",
-  "license": "MIT"
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "jsdom": "^23.0.0",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=14.x"
+  }
 }

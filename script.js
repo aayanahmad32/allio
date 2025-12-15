@@ -12,31 +12,35 @@ const CONFIG = {
     // Multiple download APIs for retry logic
     downloadAPIs: [
         {
-            name: 'Cobalt',
-            url: 'https://api.cobalt.tools/api/json',
+            name: 'Direct YouTube',
+            url: 'https://youtube.com/watch',
+            method: 'GET',
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Origin': 'https://cobalt.tools',
-                'Referer': 'https://cobalt.tools/'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             }
         },
         {
-            name: 'AllTube',
-            url: 'https://api.alltubedownload.com/api/info',
+            name: 'YouTube oEmbed',
+            url: 'https://www.youtube.com/oembed',
+            method: 'GET',
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             }
         },
         {
-            name: 'Y2Mate',
-            url: 'https://www.y2mate.com/mates/analyzeV2/ajax',
+            name: 'Instagram Direct',
+            url: 'https://www.instagram.com/p/',
+            method: 'GET',
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            }
+        },
+        {
+            name: 'TikTok Direct',
+            url: 'https://tiktok.com/@',
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             }
         }
     ]
@@ -51,7 +55,8 @@ let appState = {
     videoInfo: null,
     isProcessing: false,
     retryCount: 0,
-    maxRetries: 3
+    maxRetries: 3,
+    deferredPrompt: null
 };
 
 // DOM Elements
@@ -171,6 +176,16 @@ function extractYouTubeId(url) {
     return null;
 }
 
+function extractInstagramId(url) {
+    const match = url.match(/instagram\.com\/p\/([^\/]+)/);
+    return match ? match[1] : null;
+}
+
+function extractTikTokId(url) {
+    const match = url.match(/tiktok\.com\/@[^\/]+\/video\/([^\/]+)/);
+    return match ? match[1] : null;
+}
+
 // ===== URL VALIDATION =====
 
 function isValidUrl(string) {
@@ -197,42 +212,177 @@ function validateAndProcessUrl(url) {
 
 // ===== CORE DOWNLOAD FUNCTIONALITY =====
 
-async function fetchVideoInfo(url) {
+// Direct YouTube extraction using YouTube's internal APIs
+async function extractYouTubeDirect(url) {
     try {
-        console.log('Fetching video info for:', url);
+        const videoId = extractYouTubeId(url);
+        if (!videoId) throw new Error('Invalid YouTube URL');
         
-        // Try YouTube oEmbed first (most reliable)
-        if (detectPlatform(url) === 'youtube') {
-            try {
-                const videoId = extractYouTubeId(url);
-                if (videoId) {
-                    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
-                    const response = await fetch(oembedUrl);
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        console.log('YouTube oEmbed success:', data);
-                        
-                        return {
-                            title: data.title,
-                            uploader: data.author_name,
-                            thumbnail: data.thumbnail_url,
-                            // Add dummy file size info for format options
-                            formats: [
-                                { format: 'mp4', quality: '1080', fileSize: null },
-                                { format: 'mp4', quality: '720', fileSize: null },
-                                { format: 'mp4', quality: '480', fileSize: null },
-                                { format: 'mp3', quality: '320', fileSize: null }
-                            ]
-                        };
-                    }
-                }
-            } catch (oembedError) {
-                console.warn('YouTube oEmbed failed, trying backend:', oembedError.message);
+        // Get video info from YouTube's internal API
+        const infoUrl = `https://youtube.com/watch?v=${videoId}`;
+        const response = await fetch(infoUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`YouTube API error: ${response.status}`);
+        }
+        
+        const html = await response.text();
+        
+        // Extract video info from HTML
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/);
+        const title = titleMatch ? titleMatch[1].replace(' - YouTube', '') : 'Unknown Title';
+        
+        // Extract player response
+        const playerResponseMatch = html.match(/var ytInitialData = ({.+?});/);
+        if (!playerResponseMatch) {
+            throw new Error('Could not extract video data');
+        }
+        
+        const playerData = JSON.parse(playerResponseMatch[1]);
+        
+        // Extract video details
+        const videoDetails = playerData.contents?.twoColumnWatchNextResults?.results?.results?.contents?.[0]?.videoPrimaryInfoRenderer;
+        const viewCount = videoDetails?.viewCount?.videoViewCountRenderer?.viewCount?.simpleText || 'N/A';
+        const lengthText = videoDetails?.lengthText?.simpleText || 'N/A';
+        
+        // Extract thumbnail
+        const thumbnailMatch = html.match(/<link rel="image_src" href="([^"]+)"/);
+        const thumbnail = thumbnailMatch ? thumbnailMatch[1] : 'https://via.placeholder.com/800x450?text=Video';
+        
+        // Extract streaming URLs
+        const streamingDataMatch = html.match(/"streamingData":({.+?}),"playbackTracking"/);
+        let downloadUrl = null;
+        
+        if (streamingDataMatch) {
+            const streamingData = JSON.parse(streamingDataMatch[1]);
+            const formats = streamingData.formats || [];
+            
+            // Find best quality
+            const bestFormat = formats.find(f => f.qualityLabel && f.qualityLabel.includes('720')) || formats[0];
+            if (bestFormat) {
+                downloadUrl = bestFormat.url;
             }
         }
         
-        // Fallback to backend API
+        return {
+            title: title,
+            uploader: 'YouTube Channel',
+            thumbnail: thumbnail,
+            views: viewCount,
+            duration: lengthText,
+            uploadDate: 'N/A',
+            description: 'Video description not available',
+            url: downloadUrl,
+            formats: [
+                { format: 'mp4', quality: '1080', fileSize: null },
+                { format: 'mp4', quality: '720', fileSize: null },
+                { format: 'mp4', quality: '480', fileSize: null },
+                { format: 'mp3', quality: '320', fileSize: null }
+            ]
+        };
+    } catch (error) {
+        console.error('YouTube direct extraction error:', error);
+        throw error;
+    }
+}
+
+// Instagram direct extraction
+async function extractInstagramDirect(url) {
+    try {
+        const postId = extractInstagramId(url);
+        if (!postId) throw new Error('Invalid Instagram URL');
+        
+        const response = await fetch(`https://www.instagram.com/p/${postId}/`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Instagram API error: ${response.status}`);
+        }
+        
+        const html = await response.text();
+        
+        // Extract video URL from Instagram's embedded data
+        const videoUrlMatch = html.match(/"video_url":"([^"]+)"/);
+        const videoUrl = videoUrlMatch ? videoUrlMatch[1].replace(/\\u002F/g, '/') : null;
+        
+        // Extract metadata
+        const titleMatch = html.match(/"caption":"([^"]+)"/);
+        const title = titleMatch ? JSON.parse(`"${titleMatch[1]}"`) : 'Instagram Post';
+        
+        const thumbnailMatch = html.match(/"display_url":"([^"]+)"/);
+        const thumbnail = thumbnailMatch ? thumbnailMatch[1].replace(/\\u002F/g, '/') : 'https://via.placeholder.com/800x450?text=Instagram';
+        
+        return {
+            title: title,
+            uploader: 'Instagram User',
+            thumbnail: thumbnail,
+            url: videoUrl,
+            formats: [
+                { format: 'mp4', quality: '720', fileSize: null },
+                { format: 'mp4', quality: '480', fileSize: null }
+            ]
+        };
+    } catch (error) {
+        console.error('Instagram direct extraction error:', error);
+        throw error;
+    }
+}
+
+// TikTok direct extraction
+async function extractTikTokDirect(url) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`TikTok API error: ${response.status}`);
+        }
+        
+        const html = await response.text();
+        
+        // Extract video URL from TikTok's embedded data
+        const videoUrlMatch = html.match(/"downloadAddr":"([^"]+)"/);
+        const videoUrl = videoUrlMatch ? videoUrlMatch[1].replace(/\\u002F/g, '/') : null;
+        
+        // Extract metadata
+        const titleMatch = html.match(/"desc":"([^"]+)"/);
+        const title = titleMatch ? JSON.parse(`"${titleMatch[1]}"`) : 'TikTok Video';
+        
+        const thumbnailMatch = html.match(/"cover":"([^"]+)"/);
+        const thumbnail = thumbnailMatch ? thumbnailMatch[1].replace(/\\u002F/g, '/') : 'https://via.placeholder.com/800x450?text=TikTok';
+        
+        return {
+            title: title,
+            uploader: 'TikTok User',
+            thumbnail: thumbnail,
+            url: videoUrl,
+            formats: [
+                { format: 'mp4', quality: '720', fileSize: null },
+                { format: 'mp3', quality: '320', fileSize: null }
+            ]
+        };
+    } catch (error) {
+        console.error('TikTok direct extraction error:', error);
+        throw error;
+    }
+}
+
+// Fallback to backend API
+async function fetchVideoInfoFromBackend(url) {
+    try {
         const response = await fetch(CONFIG.apis.videoInfo, {
             method: 'POST',
             headers: {
@@ -241,16 +391,55 @@ async function fetchVideoInfo(url) {
             body: JSON.stringify({ url })
         });
         
-        console.log('Video info response status:', response.status);
-        
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Video info error response:', errorText);
-            throw new Error(`Failed to fetch video info: ${response.status}`);
+            throw new Error(`Backend API error: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Video info data:', data);
+        return data;
+    } catch (error) {
+        console.error('Backend API error:', error);
+        throw error;
+    }
+}
+
+// Main video info fetch function
+async function fetchVideoInfo(url) {
+    try {
+        console.log('Fetching video info for:', url);
+        
+        const platform = detectPlatform(url);
+        let data = null;
+        
+        // Try direct extraction first
+        if (platform === 'youtube') {
+            try {
+                data = await extractYouTubeDirect(url);
+                console.log('YouTube direct extraction success:', data);
+            } catch (error) {
+                console.warn('YouTube direct extraction failed, trying backend:', error.message);
+                data = await fetchVideoInfoFromBackend(url);
+            }
+        } else if (platform === 'instagram') {
+            try {
+                data = await extractInstagramDirect(url);
+                console.log('Instagram direct extraction success:', data);
+            } catch (error) {
+                console.warn('Instagram direct extraction failed, trying backend:', error.message);
+                data = await fetchVideoInfoFromBackend(url);
+            }
+        } else if (platform === 'tiktok') {
+            try {
+                data = await extractTikTokDirect(url);
+                console.log('TikTok direct extraction success:', data);
+            } catch (error) {
+                console.warn('TikTok direct extraction failed, trying backend:', error.message);
+                data = await fetchVideoInfoFromBackend(url);
+            }
+        } else {
+            // For other platforms, use backend
+            data = await fetchVideoInfoFromBackend(url);
+        }
         
         return data;
     } catch (error) {
@@ -268,18 +457,20 @@ async function downloadWithRetry(url, format, quality, isAudio) {
         const api = CONFIG.downloadAPIs[i];
         
         try {
-            showSpinner(true, `Trying ${api.name} API (${i + 1}/${CONFIG.downloadAPIs.length})...`);
+            showSpinner(true, `Trying ${api.name} (${i + 1}/${CONFIG.downloadAPIs.length})...`);
             
             console.log(`Trying API ${i + 1}: ${api.name}`);
             
             let result;
             
-            if (api.name === 'Cobalt') {
-                result = await tryCobaltAPI(url, format, quality, isAudio, api);
-            } else if (api.name === 'AllTube') {
-                result = await tryAllTubeAPI(url, format, quality, isAudio, api);
-            } else if (api.name === 'Y2Mate') {
-                result = await tryY2MateAPI(url, format, quality, isAudio, api);
+            if (api.name === 'Direct YouTube') {
+                result = await extractYouTubeDirect(url);
+            } else if (api.name === 'YouTube oEmbed') {
+                result = await fetchYouTubeOEmbed(url);
+            } else if (api.name === 'Instagram Direct') {
+                result = await extractInstagramDirect(url);
+            } else if (api.name === 'TikTok Direct') {
+                result = await extractTikTokDirect(url);
             }
             
             if (result && result.url) {
@@ -302,107 +493,16 @@ async function downloadWithRetry(url, format, quality, isAudio) {
     throw new Error(`All download APIs failed. Last error: ${lastError?.message || 'Unknown error'}`);
 }
 
-// ===== API IMPLEMENTATIONS =====
-
-async function tryCobaltAPI(url, format, quality, isAudio, api) {
-    const response = await fetch(api.url, {
-        method: 'POST',
-        headers: api.headers,
-        body: JSON.stringify({
-            url: url,
-            vCodec: 'h264',
-            vQuality: quality,
-            aFormat: 'mp3',
-            isAudioOnly: isAudio,
-            filenamePattern: 'pretty'
-        })
-    });
-    
-    const text = await response.text();
-    
-    // Check if response is HTML (error) or JSON (success)
-    if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-        throw new Error('Cobalt API blocked by Cloudflare');
-    }
-    
+// Helper function for YouTube oEmbed
+async function fetchYouTubeOEmbed(url) {
+    console.log('Fetching YouTube oEmbed for:', url);
+    const response = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
     if (!response.ok) {
-        throw new Error(`Cobalt API error: ${response.status}`);
+        throw new Error(`YouTube oEmbed request failed with status: ${response.status}`);
     }
-    
-    const data = JSON.parse(text);
-    
-    if (data.status === 'error' || data.status === 'rate-limit') {
-        throw new Error(data.text || 'Cobalt API error');
-    }
-    
-    return data;
-}
-
-async function tryAllTubeAPI(url, format, quality, isAudio, api) {
-    const response = await fetch(`${api.url}?url=${encodeURIComponent(url)}`, {
-        headers: api.headers
-    });
-    
-    if (!response.ok) {
-        throw new Error(`AllTube API error: ${response.status}`);
-    }
-    
     const data = await response.json();
-    
-    // Find the best format based on requested quality
-    let selectedFormat = data.formats?.find(f => 
-        f.qualityLabel && f.qualityLabel.includes(quality)
-    ) || data.formats?.[0];
-    
-    if (!selectedFormat) {
-        throw new Error('No suitable format found');
-    }
-    
-    return {
-        url: selectedFormat.url,
-        title: data.title,
-        filename: data.title,
-        filesize: selectedFormat.filesize
-    };
-}
-
-async function tryY2MateAPI(url, format, quality, isAudio, api) {
-    // Step 1: Analyze video
-    const formData = new FormData();
-    formData.append('k_query', url);
-    formData.append('k_page', 'home');
-    
-    const analyzeResponse = await fetch(api.url, {
-        method: 'POST',
-        headers: api.headers,
-        body: formData
-    });
-    
-    if (!analyzeResponse.ok) {
-        throw new Error(`Y2Mate analyze error: ${analyzeResponse.status}`);
-    }
-    
-    const analyzeData = await analyzeResponse.json();
-    
-    if (!analyzeData.links) {
-        throw new Error('No download links found');
-    }
-    
-    // Find the best quality
-    const qualityKey = `${quality}p`;
-    let videoLink = analyzeData.links.mp4?.[qualityKey] || 
-                   analyzeData.links.mp4?.['360p'] || 
-                   Object.values(analyzeData.links.mp4 || {})[0];
-    
-    if (!videoLink) {
-        throw new Error('No suitable quality found');
-    }
-    
-    return {
-        url: videoLink[0]?.k || videoLink,
-        title: analyzeData.title,
-        filename: analyzeData.title
-    };
+    console.log('YouTube oEmbed response:', data);
+    return data;
 }
 
 // ===== VIDEO DETAILS =====
@@ -1023,6 +1123,41 @@ function copyShareLink() {
     });
 }
 
+// ===== PWA INSTALL PROMPT =====
+
+function showPWAInstallPrompt() {
+    const prompt = document.getElementById('pwaInstallPrompt');
+    if (prompt && appState.deferredPrompt) {
+        prompt.classList.remove('hidden');
+    }
+}
+
+function dismissPWAInstall() {
+    const prompt = document.getElementById('pwaInstallPrompt');
+    if (prompt) {
+        prompt.classList.add('hidden');
+    }
+}
+
+function acceptPWAInstall() {
+    const prompt = document.getElementById('pwaInstallPrompt');
+    if (prompt) {
+        prompt.classList.add('hidden');
+    }
+    
+    if (appState.deferredPrompt) {
+        appState.deferredPrompt.prompt();
+        appState.deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the A2HS prompt');
+            } else {
+                console.log('User dismissed the A2HS prompt');
+            }
+            appState.deferredPrompt = null;
+        });
+    }
+}
+
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1087,6 +1222,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 30000);
 });
 
+// PWA Install Prompt Event Listener
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    appState.deferredPrompt = e;
+    showPWAInstallPrompt();
+});
+
 // ===== GLOBAL FUNCTIONS =====
 // Make functions globally available for onclick handlers
 window.startDownload = startDownload;
@@ -1115,3 +1257,5 @@ window.shareViaTelegram = shareViaTelegram;
 window.copyShareLink = copyShareLink;
 window.closeErrorModal = closeErrorModal;
 window.retryDownload = retryDownload;
+window.dismissPWAInstall = dismissPWAInstall;
+window.acceptPWAInstall = acceptPWAInstall;
