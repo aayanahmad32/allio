@@ -6,6 +6,7 @@
   "background_color": "#050507",
   "theme_color": "#667eea",
   "orientation": "portrait",
+  "description": "Download videos and music from social media platforms.",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",

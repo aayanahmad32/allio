@@ -4,44 +4,32 @@
 // Configuration
 const CONFIG = {
     apis: {
-        download: '/api/download',
+        fetchPage: '/api/fetch-page',
         videoInfo: '/api/video-info',
         metadata: '/api/youtube-metadata',
         proxy: '/api/proxy'
     },
-    // Multiple download APIs for retry logic
-    downloadAPIs: [
+    // Multiple download strategies for retry logic
+    downloadStrategies: [
         {
             name: 'Direct YouTube',
-            url: 'https://youtube.com/watch',
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            }
+            method: 'youtube-direct'
         },
         {
             name: 'YouTube oEmbed',
-            url: 'https://www.youtube.com/oembed',
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            }
+            method: 'youtube-oembed'
         },
         {
             name: 'Instagram Direct',
-            url: 'https://www.instagram.com/p/',
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            }
+            method: 'instagram-direct'
         },
         {
             name: 'TikTok Direct',
-            url: 'https://tiktok.com/@',
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            }
+            method: 'tiktok-direct'
+        },
+        {
+            name: 'Backend Proxy',
+            method: 'backend-proxy'
         }
     ]
 };
@@ -212,6 +200,31 @@ function validateAndProcessUrl(url) {
 
 // ===== CORE DOWNLOAD FUNCTIONALITY =====
 
+// Smart proxy fetch for getting page content
+async function fetchPageContent(url) {
+    try {
+        console.log('Fetching page content via proxy for:', url);
+        
+        const response = await fetch(CONFIG.apis.fetchPage, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Proxy fetch failed: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.html;
+    } catch (error) {
+        console.error('Proxy fetch error:', error);
+        throw error;
+    }
+}
+
 // Direct YouTube extraction using YouTube's internal APIs
 async function extractYouTubeDirect(url) {
     try {
@@ -220,18 +233,11 @@ async function extractYouTubeDirect(url) {
         
         // Get video info from YouTube's internal API
         const infoUrl = `https://youtube.com/watch?v=${videoId}`;
-        const response = await fetch(infoUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-            }
-        });
+        const html = await fetchPageContent(infoUrl);
         
-        if (!response.ok) {
-            throw new Error(`YouTube API error: ${response.status}`);
+        if (!html) {
+            throw new Error('Could not fetch YouTube page content');
         }
-        
-        const html = await response.text();
         
         // Extract video info from HTML
         const titleMatch = html.match(/<title>([^<]+)<\/title>/);
@@ -243,7 +249,18 @@ async function extractYouTubeDirect(url) {
             throw new Error('Could not extract video data');
         }
         
-        const playerData = JSON.parse(playerResponseMatch[1]);
+        let playerData;
+        try {
+            playerData = JSON.parse(playerResponseMatch[1]);
+        } catch (e) {
+            // Fallback to other extraction methods
+            const ytInitialDataMatch = html.match(/window\["ytInitialData"\] = ({.+?});/);
+            if (ytInitialDataMatch) {
+                playerData = JSON.parse(ytInitialDataMatch[1]);
+            } else {
+                throw new Error('Could not parse YouTube data');
+            }
+        }
         
         // Extract video details
         const videoDetails = playerData.contents?.twoColumnWatchNextResults?.results?.results?.contents?.[0]?.videoPrimaryInfoRenderer;
@@ -297,18 +314,11 @@ async function extractInstagramDirect(url) {
         const postId = extractInstagramId(url);
         if (!postId) throw new Error('Invalid Instagram URL');
         
-        const response = await fetch(`https://www.instagram.com/p/${postId}/`, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-            }
-        });
+        const html = await fetchPageContent(`https://www.instagram.com/p/${postId}/`);
         
-        if (!response.ok) {
-            throw new Error(`Instagram API error: ${response.status}`);
+        if (!html) {
+            throw new Error('Could not fetch Instagram page content');
         }
-        
-        const html = await response.text();
         
         // Extract video URL from Instagram's embedded data
         const videoUrlMatch = html.match(/"video_url":"([^"]+)"/);
@@ -316,7 +326,7 @@ async function extractInstagramDirect(url) {
         
         // Extract metadata
         const titleMatch = html.match(/"caption":"([^"]+)"/);
-        const title = titleMatch ? JSON.parse(`"${titleMatch[1]}"`) : 'Instagram Post';
+        the title = titleMatch ? JSON.parse(`"${titleMatch[1]}"`) : 'Instagram Post';
         
         const thumbnailMatch = html.match(/"display_url":"([^"]+)"/);
         const thumbnail = thumbnailMatch ? thumbnailMatch[1].replace(/\\u002F/g, '/') : 'https://via.placeholder.com/800x450?text=Instagram';
@@ -340,18 +350,11 @@ async function extractInstagramDirect(url) {
 // TikTok direct extraction
 async function extractTikTokDirect(url) {
     try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-            }
-        });
+        const html = await fetchPageContent(url);
         
-        if (!response.ok) {
-            throw new Error(`TikTok API error: ${response.status}`);
+        if (!html) {
+            throw new Error('Could not fetch TikTok page content');
         }
-        
-        const html = await response.text();
         
         // Extract video URL from TikTok's embedded data
         const videoUrlMatch = html.match(/"downloadAddr":"([^"]+)"/);
@@ -453,44 +456,46 @@ async function fetchVideoInfo(url) {
 async function downloadWithRetry(url, format, quality, isAudio) {
     let lastError = null;
     
-    for (let i = 0; i < CONFIG.downloadAPIs.length; i++) {
-        const api = CONFIG.downloadAPIs[i];
+    for (let i = 0; i < CONFIG.downloadStrategies.length; i++) {
+        const strategy = CONFIG.downloadStrategies[i];
         
         try {
-            showSpinner(true, `Trying ${api.name} (${i + 1}/${CONFIG.downloadAPIs.length})...`);
+            showSpinner(true, `Trying ${strategy.name} (${i + 1}/${CONFIG.downloadStrategies.length})...`);
             
-            console.log(`Trying API ${i + 1}: ${api.name}`);
+            console.log(`Trying strategy ${i + 1}: ${strategy.name}`);
             
             let result;
             
-            if (api.name === 'Direct YouTube') {
+            if (strategy.method === 'youtube-direct') {
                 result = await extractYouTubeDirect(url);
-            } else if (api.name === 'YouTube oEmbed') {
+            } else if (strategy.method === 'youtube-oembed') {
                 result = await fetchYouTubeOEmbed(url);
-            } else if (api.name === 'Instagram Direct') {
+            } else if (strategy.method === 'instagram-direct') {
                 result = await extractInstagramDirect(url);
-            } else if (api.name === 'TikTok Direct') {
+            } else if (strategy.method === 'tiktok-direct') {
                 result = await extractTikTokDirect(url);
+            } else if (strategy.method === 'backend-proxy') {
+                result = await fetchVideoInfoFromBackend(url);
             }
             
             if (result && result.url) {
                 showSpinner(false);
-                showNotification('Success', `Download link generated using ${api.name}!`);
+                showNotification('Success', `Download link generated using ${strategy.name}!`);
                 return result;
             }
             
         } catch (error) {
             lastError = error;
-            console.warn(`${api.name} API failed:`, error.message);
+            console.warn(`${strategy.name} strategy failed:`, error.message);
             
-            if (i < CONFIG.downloadAPIs.length - 1) {
-                await sleep(2000); // Wait 2 seconds before trying next API
+            if (i < CONFIG.downloadStrategies.length - 1) {
+                await sleep(2000); // Wait 2 seconds before trying next strategy
             }
         }
     }
     
     showSpinner(false);
-    throw new Error(`All download APIs failed. Last error: ${lastError?.message || 'Unknown error'}`);
+    throw new Error(`All download strategies failed. Last error: ${lastError?.message || 'Unknown error'}`);
 }
 
 // Helper function for YouTube oEmbed
@@ -684,7 +689,7 @@ async function generateDownloadLink() {
             isAudio: isAudio
         });
         
-        // Use retry logic with multiple APIs
+        // Use retry logic with multiple strategies
         const downloadData = await downloadWithRetry(
             appState.currentVideo.url,
             appState.selectedFormat,

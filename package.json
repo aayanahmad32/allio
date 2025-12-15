@@ -1,7 +1,7 @@
 {
   "name": "allio-pro",
   "version": "1.0.40",
-  "description": "Premium Media Downloader for YouTube, Instagram, TikTok, and more.",
+  "description": "Premium Media Downloader - Download Videos from YouTube, Instagram, TikTok",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -9,10 +9,10 @@
   },
   "keywords": [
     "downloader",
-    "video",
     "youtube",
+    "instagram",
     "tiktok",
-    "instagram"
+    "express"
   ],
   "author": "LoopLabs Tech",
   "license": "ISC",
