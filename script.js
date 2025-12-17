@@ -326,7 +326,7 @@ async function extractInstagramDirect(url) {
         
         // Extract metadata
         const titleMatch = html.match(/"caption":"([^"]+)"/);
-        the title = titleMatch ? JSON.parse(`"${titleMatch[1]}"`) : 'Instagram Post';
+        const title = titleMatch ? JSON.parse(`"${titleMatch[1]}"`) : 'Instagram Post';
         
         const thumbnailMatch = html.match(/"display_url":"([^"]+)"/);
         const thumbnail = thumbnailMatch ? thumbnailMatch[1].replace(/\\u002F/g, '/') : 'https://via.placeholder.com/800x450?text=Instagram';
@@ -1166,7 +1166,7 @@ function acceptPWAInstall() {
 // ===== EVENT LISTENERS =====
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('ALLIO PRO v1.0.40 - Application loaded');
+    console.log('ALLIO PRO v1.0.50 - Application loaded');
     
     // Load saved preferences
     const savedTheme = localStorage.getItem('theme');

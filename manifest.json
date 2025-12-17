@@ -1,12 +1,12 @@
 {
-  "name": "ALLIO PRO | Premium Media Downloader",
-  "short_name": "ALLIO PRO",
+  "name": "ALLIO PRO",
+  "short_name": "ALLIO",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050507",
   "theme_color": "#667eea",
   "orientation": "portrait",
-  "description": "Download videos and music from social media platforms.",
+  "description": "The ultimate global media downloader for all social media platforms.",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -19,11 +19,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
     }
   ]
 }

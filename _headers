@@ -1,9 +1,18 @@
 /*
+X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 X-XSS-Protection: 1; mode=block
-X-Content-Type-Options: nosniff
 Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: geolocation=(), microphone=(), camera=()
+Permissions-Policy: geolocation=(), microphone=()
 
-/sw.js
-Cache-Control: no-cache
+/api/*
+Cache-Control: no-store, max-age=0
+
+/*.css
+Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+Cache-Control: public, max-age=31536000, immutable
